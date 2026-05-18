@@ -23,11 +23,11 @@ public class Match extends PanacheEntityBase {
     public String phase;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "blue_athlete_id", nullable = false)
+    @JoinColumn(name = "blue_athlete_id", nullable = true)
     public Athlete blueAthlete;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "red_athlete_id", nullable = false)
+    @JoinColumn(name = "red_athlete_id", nullable = true)
     public Athlete redAthlete;
 
     @ManyToOne(fetch = FetchType.EAGER)
@@ -35,9 +35,11 @@ public class Match extends PanacheEntityBase {
     public Category category;
 
     public String matchVictoryCriteria;
-    public Integer blueAthleteVideoQuota;
-    public Integer redAthleteVideoQuota;
+    public Integer videoQuota;
     public Boolean wtCompetitionDataProtocol;
+
+    public String nextMatchNumber;
+    public String nextMatchColor;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)

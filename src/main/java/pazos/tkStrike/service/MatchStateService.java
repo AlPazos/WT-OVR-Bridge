@@ -4,7 +4,6 @@ import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.transaction.Transactional;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pazos.tkStrike.entity.Athlete;
@@ -20,9 +19,6 @@ public class MatchStateService {
 
     private static final Logger log = LoggerFactory.getLogger(MatchStateService.class);
 
-    @ConfigProperty(name = "campionato.csv.path", defaultValue = "campionato.csv")
-    String csvPath;
-
     void onStart(@Observes StartupEvent ev) {
         if (Match.count() == 0) {
             cargarCsv();
@@ -31,7 +27,7 @@ public class MatchStateService {
 
     @Transactional(Transactional.TxType.REQUIRED)
     public long cargarCsv() {
-        new CsvMatchLoader(csvPath).loadMatches();
+        new CsvMatchLoader().load();
         long total = Match.count();
         log.info("CSV cargado en BD — {} combates", total);
         return total;
@@ -149,8 +145,8 @@ public class MatchStateService {
             dto.setRedAthlete(red);
         }
 
-        dto.setBlueAthleteVideoQuota(match.blueAthleteVideoQuota);
-        dto.setRedAthleteVideoQuota(match.redAthleteVideoQuota);
+        dto.setBlueAthleteVideoQuota(match.videoQuota);
+        dto.setRedAthleteVideoQuota(match.videoQuota);
         dto.setMatchVictoryCriteria(match.matchVictoryCriteria);
         dto.setWtCompetitionDataProtocol(match.wtCompetitionDataProtocol);
 

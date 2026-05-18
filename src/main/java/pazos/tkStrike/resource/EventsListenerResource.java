@@ -22,6 +22,9 @@ public class EventsListenerResource {
     @Inject
     MatchStateService matchStateService;
 
+    @Inject
+    pazos.tkStrike.service.TournamentService tournamentService;
+
     @GET
     @Path("/ping")
     public Response ping() {
@@ -68,10 +71,12 @@ public class EventsListenerResource {
     @POST
     @Path("/match-result")
     @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional
     public Response matchResult(MatchResultDto dto,
                                 @PathParam("ring") String ring) {
         if (dto == null) return Response.status(400).build();
-        log.info("Pista {} - Resultado: gañador={} decisión={}", ring, dto.getMatchWinnerColor(), dto.getMatchFinalDecision());
+        log.info("Pista {} - Resultado: ganador={} decisión={}", ring, dto.getMatchWinnerColor(), dto.getMatchFinalDecision());
+        tournamentService.advance(dto);
         return Response.ok().build();
     }
 }
