@@ -43,12 +43,13 @@ public class MatchStateService {
         }
     }
 
-    public List<MatchConfigurationDto> getAllCombates(String ring) {
+    public List<MatchConfigurationDto> getAllCombates(String ring, String status) {
         try {
-            return Match.findAllByMat(Integer.parseInt(ring))
-                    .stream()
-                    .map(this::convertMatchToDto)
-                    .collect(Collectors.toList());
+            int mat = Integer.parseInt(ring);
+            List<Match> matches = status != null
+                    ? Match.findAllByMatAndStatus(mat, status)
+                    : Match.findAllByMat(mat);
+            return matches.stream().map(this::convertMatchToDto).collect(Collectors.toList());
         } catch (NumberFormatException e) {
             log.warn("Pista inválida: {}", ring);
             return List.of();
@@ -90,6 +91,7 @@ public class MatchStateService {
         dto.setMatchNumber(match.matchNumber);
         dto.setMat(match.mat);
         dto.setPhase(match.phase);
+        dto.setStatus(match.status);
 
         if (match.category != null) {
             MatchConfigurationDto.CategoryDto cat = new MatchConfigurationDto.CategoryDto();

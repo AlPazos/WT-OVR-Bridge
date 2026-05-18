@@ -1,5 +1,6 @@
 package pazos.tkStrike.model;
 
+import com.fasterxml.jackson.annotation.JsonEnumDefaultValue;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
@@ -47,6 +48,25 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class WtOvrActionDto {
 
+    public enum Action {
+        MATCH_LOADED, MATCH_START, MATCH_END,
+        ROUND_START, ROUND_END,
+        MATCH_TIME, MATCH_TIMEOUT, MATCH_RESUME,
+        SCORE_HOME_PUNCH, SCORE_HOME_KICK, SCORE_HOME_TKICK, SCORE_HOME_SKICK,
+        SCORE_HOME_HEAD, SCORE_HOME_THEAD,
+        SCORE_AWAY_PUNCH, SCORE_AWAY_KICK, SCORE_AWAY_TKICK, SCORE_AWAY_SKICK,
+        SCORE_AWAY_HEAD, SCORE_AWAY_THEAD,
+        PENALTY_HOME, PENALTY_AWAY,
+        INVALIDATE_SCORE, ADJUST_SCORE, ADJUST_PENALTY,
+        INVALIDATE_SCORE_HOME_PUNCH, INVALIDATE_SCORE_HOME_KICK,
+        INVALIDATE_SCORE_AWAY_PUNCH, INVALIDATE_SCORE_AWAY_KICK,
+        VR_HOME_REQUEST, VR_HOME_ACCEPTED, VR_HOME_REJECTED,
+        VR_AWAY_REQUEST, VR_AWAY_ACCEPTED, VR_AWAY_REJECTED,
+
+        @JsonEnumDefaultValue
+        UNKNOWN
+    }
+
     private WtOvrDataDto data;
 
     public WtOvrDataDto getData() {
@@ -90,7 +110,7 @@ public class WtOvrActionDto {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class AttributesDto {
-        private String action;      // Action enum as String
+        private Action action;
         private Integer hitlevel;
         private Integer round;
         private String roundTime;   // "mm:ss" format
@@ -101,11 +121,11 @@ public class WtOvrActionDto {
         private String source;      // ActionSource enum as String or null
         private String timestamp;
 
-        public String getAction() {
+        public Action getAction() {
             return action;
         }
 
-        public void setAction(String v) {
+        public void setAction(Action v) {
             this.action = v;
         }
 

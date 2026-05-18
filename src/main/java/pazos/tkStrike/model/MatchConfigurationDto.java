@@ -15,6 +15,7 @@ public class MatchConfigurationDto {
     private Integer mat;
     private String matchNumber;
     private String phase;
+    private String status;
     private CategoryDto category;
     private AthleteDto blueAthlete;
     private Integer blueAthleteVideoQuota;
@@ -34,6 +35,14 @@ public class MatchConfigurationDto {
     private RefereeDto refereeRJ;
 
     // ── Main DTO getters/setters ──────────────────────────────────────────────
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String v) {
+        this.status = v;
+    }
+
     public String getInternalId() {
         return internalId;
     }

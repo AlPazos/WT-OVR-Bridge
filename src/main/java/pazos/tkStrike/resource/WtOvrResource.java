@@ -68,7 +68,7 @@ public class WtOvrResource {
         log.info("WT OVR GET /matches — mat={}", mat);
         String ring = mat != null ? String.valueOf(mat) : "1";
 
-        List<MatchConfigurationDto> dtos = matchStateService.getAllCombates(ring);
+        List<MatchConfigurationDto> dtos = matchStateService.getAllCombates(ring, status);
 
         if (dtos.isEmpty()) {
             return Response.ok("{\"data\":[],\"included\":[]}").type(JSONAPI).build();
@@ -160,19 +160,26 @@ public class WtOvrResource {
     @Transactional
     public Response postAction(@PathParam("id") String matchId, String body) {
         try {
-            WtOvrActionDto action = mapper.readValue(body, WtOvrActionDto.class);
-            var attrs = action.getData() != null ? action.getData().getAttributes() : null;
-            String actionType = attrs != null ? attrs.getAction() : "UNKNOWN";
-            log.info("WT OVR POST /matches/{}/actions — action={}", matchId, actionType);
+            WtOvrActionDto dto = mapper.readValue(body, WtOvrActionDto.class);
+            var attrs = dto.getData() != null ? dto.getData().getAttributes() : null;
+            WtOvrActionDto.Action action = attrs != null ? attrs.getAction() : WtOvrActionDto.Action.UNKNOWN;
+            log.info("WT OVR POST /matches/{}/actions — action={}", matchId, action);
 
             Match match = Match.findById(matchId);
             if (match != null && attrs != null) {
-                Integer bluePoints = attrs.getScore() != null ? attrs.getScore().getHome() : null;
-                Integer redPoints = attrs.getScore() != null ? attrs.getScore().getAway() : null;
-                Integer bluePenalties = attrs.getPenalties() != null ? attrs.getPenalties().getHome() : null;
-                Integer redPenalties = attrs.getPenalties() != null ? attrs.getPenalties().getAway() : null;
-                new MatchEvent(match, attrs.getRound(), null, actionType,
-                        bluePoints, bluePenalties, redPoints, redPenalties).persist();
+                if (action == WtOvrActionDto.Action.MATCH_LOADED) {
+                    match.status = "started";
+                } else if (action == WtOvrActionDto.Action.MATCH_END) {
+                    match.status = "finished";
+                } else if (action != WtOvrActionDto.Action.MATCH_TIME
+                        && action != WtOvrActionDto.Action.UNKNOWN) {
+                    Integer bluePoints    = attrs.getScore()     != null ? attrs.getScore().getHome()     : null;
+                    Integer redPoints     = attrs.getScore()     != null ? attrs.getScore().getAway()     : null;
+                    Integer bluePenalties = attrs.getPenalties() != null ? attrs.getPenalties().getHome() : null;
+                    Integer redPenalties  = attrs.getPenalties() != null ? attrs.getPenalties().getAway() : null;
+                    new MatchEvent(match, attrs.getRound(), null, action.name(),
+                            bluePoints, bluePenalties, redPoints, redPenalties).persist();
+                }
             }
         } catch (Exception e) {
             log.warn("WT OVR action parse error: {}", e.getMessage());
@@ -287,7 +294,7 @@ public class WtOvrResource {
         node.put("id", matchId);
 
         ObjectNode attrs = mapper.createObjectNode();
-        attrs.put("status", "available");
+        attrs.put("status", dto.getStatus() != null ? dto.getStatus() : "available");
         attrs.put("mat", mat != null ? mat : 1);
         attrs.put("number", matchId);
         // phase como String — TKStrike usa match.getPhase().toString()

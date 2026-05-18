@@ -41,6 +41,9 @@ public class Match extends PanacheEntityBase {
     public String nextMatchNumber;
     public String nextMatchColor;
 
+    @Column(nullable = false, columnDefinition = "varchar(20) default 'available'")
+    public String status = "available";
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     public LocalDateTime createdAt;
@@ -61,6 +64,10 @@ public class Match extends PanacheEntityBase {
 
     public static List<Match> findAllByMat(int mat) {
         return find("mat", mat).list();
+    }
+
+    public static List<Match> findAllByMatAndStatus(int mat, String status) {
+        return find("mat = ?1 and status = ?2", mat, status).list();
     }
 
     public static Match findByCompetitor(Athlete athlete) {
