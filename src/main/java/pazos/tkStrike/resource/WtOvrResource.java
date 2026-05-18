@@ -9,28 +9,29 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import pazos.tkStrike.entity.Match;
 import pazos.tkStrike.model.MatchConfigurationDto;
 import pazos.tkStrike.model.WtOvrActionDto;
 import pazos.tkStrike.service.MatchStateService;
-import pazos.tkStrike.websocket.PavillonWebSocket;
+
 import java.util.List;
 
 /**
  * Protocolo WT OVR (JSON:API/crnk).
- *
+ * <p>
  * TKStrike inclúe no ?include= todas estas relacións:
- *   homeCompetitor, homeCompetitor.participants,
- *   awayCompetitor, awayCompetitor.participants,
- *   matchConfiguration, refereeAssignment,
- *   refereeAssignment.refJ1/J2/J3/CR/RJ/TA, event
- *
+ * homeCompetitor, homeCompetitor.participants,
+ * awayCompetitor, awayCompetitor.participants,
+ * matchConfiguration, refereeAssignment,
+ * refereeAssignment.refJ1/J2/J3/CR/RJ/TA, event
+ * <p>
  * Polo tanto o included debe conter:
- *   - competitors (home +ike inclúe no ?include= todas estas  away) con participants como ARRAY de refs
- *   - participants (home + away) con todos os campos de Participant.java
- *   - match-configurations con timing (Strings "mm:ss"), thresholds, goldenPoint, videoReplayQuota, rules
- *   - match-referee-assignments (baleiro se non hai árbitros)
- *   - events con discipline, division, gender, name, abbreviation, weightCategory
- *
+ * - competitors (home +ike inclúe no ?include= todas estas  away) con participants como ARRAY de refs
+ * - participants (home + away) con todos os campos de Participant.java
+ * - match-configurations con timing (Strings "mm:ss"), thresholds, goldenPoint, videoReplayQuota, rules
+ * - match-referee-assignments (baleiro se non hai árbitros)
+ * - events con discipline, division, gender, name, abbreviation, weightCategory
+ * <p>
  * O endpoint GET /participants/{id} tamén é necesario porque crnk
  * fai lazy fetch se non atopa o participant no included.
  */
@@ -39,22 +40,22 @@ public class WtOvrResource {
 
     private static final Logger log = LoggerFactory.getLogger(WtOvrResource.class);
     private static final String JSONAPI = "application/vnd.api+json";
-
+    private final ObjectMapper mapper = new ObjectMapper();
     @Inject
     MatchStateService matchStateService;
-    @Inject
-    PavillonWebSocket ws;
-
-    private final ObjectMapper mapper = new ObjectMapper();
 
     // ── /status ──────────────────────────────────────────────────────────────
-    @GET @Path("/status") @Produces(MediaType.APPLICATION_JSON)
+    @GET
+    @Path("/status")
+    @Produces(MediaType.APPLICATION_JSON)
     public Response status() {
         return Response.ok("{\"status\":\"ok\"}").build();
     }
 
     // ── GET /matches ─────────────────────────────────────────────────────────
-    @GET @Path("/matches") @Produces(JSONAPI)
+    @GET
+    @Path("/matches")
+    @Produces(JSONAPI)
     public Response getMatches(
             @QueryParam("filter[status]") String status,
             @QueryParam("filter[mat]") Integer mat,
@@ -63,7 +64,6 @@ public class WtOvrResource {
         log.info("WT OVR GET /matches — mat={}", mat);
         String ring = mat != null ? String.valueOf(mat) : "1";
 
-        // Obtener TODOS los combates de la pista, no solo el siguiente
         List<MatchConfigurationDto> dtos = matchStateService.getAllCombates(ring);
 
         if (dtos.isEmpty()) {
@@ -73,21 +73,24 @@ public class WtOvrResource {
     }
 
     // ── GET /matches/{id} ────────────────────────────────────────────────────
-    @GET @Path("/matches/{id}") @Produces(JSONAPI)
+    @GET
+    @Path("/matches/{id}")
+    @Produces(JSONAPI)
     public Response getMatch(@PathParam("id") String id) {
         log.info("WT OVR GET /matches/{}", id);
-        MatchConfigurationDto dto = matchStateService.getCombateByMatchNumber(id);
-        if (dto == null) {
+        Match match = Match.findById(id);
+        if (match == null) {
             return Response.status(404)
                     .entity("{\"errors\":[{\"status\":\"404\",\"title\":\"Not found\"}]}")
                     .type(JSONAPI).build();
         }
-        return Response.ok(buildSingleResponse(dto)).type(JSONAPI).build();
+        return Response.ok(buildSingleResponse(matchStateService.convertMatchToDto(match))).type(JSONAPI).build();
     }
 
     // ── GET /participants/{id} ───────────────────────────────────────────────
-    // crnk fai lazy fetch se non atopa o participant no included
-    @GET @Path("/participants/{id}") @Produces(JSONAPI)
+    @GET
+    @Path("/participants/{id}")
+    @Produces(JSONAPI)
     public Response getParticipant(@PathParam("id") String id) {
         log.info("WT OVR GET /participants/{}", id);
 
@@ -99,7 +102,9 @@ public class WtOvrResource {
     }
 
     // ── GET /competitors/{id} ────────────────────────────────────────────────
-    @GET @Path("/competitors/{id}") @Produces(JSONAPI)
+    @GET
+    @Path("/competitors/{id}")
+    @Produces(JSONAPI)
     public Response getCompetitor(@PathParam("id") String id) {
         log.info("WT OVR GET /competitors/{}", id);
         MatchConfigurationDto dto = matchStateService.getCombateByCompetitorId(id);
@@ -114,17 +119,23 @@ public class WtOvrResource {
     }
 
     // ── GET /events/{id} ─────────────────────────────────────────────────────
-    @GET @Path("/events/{id}") @Produces(JSONAPI)
+    @GET
+    @Path("/events/{id}")
+    @Produces(JSONAPI)
     public Response getEvent(@PathParam("id") String id) {
         log.info("WT OVR GET /events/{}", id);
-        MatchConfigurationDto dto = matchStateService.getCombateByEventId(id);
+        String matchId = id.replace("event-", "");
+        Match match = Match.findById(matchId);
+        MatchConfigurationDto dto = match != null ? matchStateService.convertMatchToDto(match) : null;
         ObjectNode root = mapper.createObjectNode();
         root.set("data", buildEventNode(id, dto));
         return Response.ok(root.toString()).type(JSONAPI).build();
     }
 
     // ── GET /match-referee-assignments/{id} ──────────────────────────────────
-    @GET @Path("/match-referee-assignments/{id}") @Produces(JSONAPI)
+    @GET
+    @Path("/match-referee-assignments/{id}")
+    @Produces(JSONAPI)
     public Response getRefereeAssignment(@PathParam("id") String id) {
         log.info("WT OVR GET /match-referee-assignments/{}", id);
         ObjectNode root = mapper.createObjectNode();
@@ -138,8 +149,10 @@ public class WtOvrResource {
     }
 
     // ── POST /matches/{id}/actions ───────────────────────────────────────────
-    @POST @Path("/matches/{id}/actions")
-    @Consumes(JSONAPI) @Produces(JSONAPI)
+    @POST
+    @Path("/matches/{id}/actions")
+    @Consumes(JSONAPI)
+    @Produces(JSONAPI)
     public Response postAction(@PathParam("id") String matchId, String body) {
         try {
             WtOvrActionDto action = mapper.readValue(body, WtOvrActionDto.class);
@@ -147,12 +160,9 @@ public class WtOvrResource {
                     ? action.getData().getAttributes().getAction() : "UNKNOWN";
             log.info("WT OVR POST /matches/{}/actions — action={}", matchId, actionType);
 
-            MatchConfigurationDto dto = matchStateService.getCombateByMatchNumber(matchId);
-            if (dto != null) {
-                String ring = dto.getMat() != null ? String.valueOf(dto.getMat()) : "1";
-                ws.broadcast(ring, String.format(
-                    "{\"type\":\"WT_OVR_ACTION\",\"ring\":\"%s\",\"action\":\"%s\"}",
-                    ring, actionType));
+            Match found = Match.findById(matchId);
+            if (found != null) {
+                String ring = found.mat != null ? String.valueOf(found.mat) : "1";
             }
         } catch (Exception e) {
             log.warn("WT OVR action parse error: {}", e.getMessage());
@@ -169,8 +179,10 @@ public class WtOvrResource {
     }
 
     // ── POST /matches/{id}/results ───────────────────────────────────────────
-    @POST @Path("/matches/{id}/results")
-    @Consumes(JSONAPI) @Produces(JSONAPI)
+    @POST
+    @Path("/matches/{id}/results")
+    @Consumes(JSONAPI)
+    @Produces(JSONAPI)
     public Response postResult(@PathParam("id") String matchId, String body) {
         log.info("WT OVR POST /matches/{}/results", matchId);
         ObjectNode root = mapper.createObjectNode();
@@ -206,14 +218,14 @@ public class WtOvrResource {
             ObjectNode root = mapper.createObjectNode();
             ArrayNode data = mapper.createArrayNode();
             ArrayNode included = mapper.createArrayNode();
-            
+
             // Agregar cada combate a data
             for (MatchConfigurationDto dto : dtos) {
                 data.add(buildMatchNode(dto, mat != null ? mat : dto.getMat()));
                 // Agregar todos los included de cada combate
                 included.addAll(buildIncluded(dto));
             }
-            
+
             root.set("data", data);
             root.set("included", included);
             return root.toString();
@@ -240,14 +252,14 @@ public class WtOvrResource {
      * Campos de Match.java: id, status, mat, number, phase (String via toString()),
      * score, penalties, round, roundTime, result
      * Relationships: homeCompetitor, awayCompetitor, matchConfiguration,
-     *                refereeAssignment, event, session
+     * refereeAssignment, event, session
      */
     private ObjectNode buildMatchNode(MatchConfigurationDto dto, Integer mat) {
         String matchId = s(dto.getMatchNumber());
-        String homeId  = competitorId(dto, true);
-        String awayId  = competitorId(dto, false);
+        String homeId = competitorId(dto, true);
+        String awayId = competitorId(dto, false);
         String configId = "config-" + matchId;
-        String eventId  = "event-" + matchId;
+        String eventId = "event-" + matchId;
         String refAssId = "refass-" + matchId;
 
         ObjectNode node = mapper.createObjectNode();
@@ -267,10 +279,12 @@ public class WtOvrResource {
 
         // score e penalties — MatchScore {home, away}
         ObjectNode score = mapper.createObjectNode();
-        score.put("home", 0); score.put("away", 0);
+        score.put("home", 0);
+        score.put("away", 0);
         attrs.set("score", score);
         ObjectNode pen = mapper.createObjectNode();
-        pen.put("home", 0); pen.put("away", 0);
+        pen.put("home", 0);
+        pen.put("away", 0);
         attrs.set("penalties", pen);
 
         // result — MatchInternalResult {status, decision, homeType, awayType}
@@ -285,13 +299,13 @@ public class WtOvrResource {
 
         // Relationships — todos os que pide TKStrike no include=
         ObjectNode rels = mapper.createObjectNode();
-        rels.set("homeCompetitor",    relOne("competitors", homeId));
-        rels.set("awayCompetitor",    relOne("competitors", awayId));
+        rels.set("homeCompetitor", relOne("competitors", homeId));
+        rels.set("awayCompetitor", relOne("competitors", awayId));
         rels.set("matchConfiguration", relOne("match-configurations", configId));
         rels.set("refereeAssignment", relOne("match-referee-assignments", refAssId));
-        rels.set("event",             relOne("events", eventId));
-        rels.set("session",           relNull());
-        rels.set("results",           relMany());
+        rels.set("event", relOne("events", eventId));
+        rels.set("session", relNull());
+        rels.set("results", relMany());
         node.set("relationships", rels);
 
         return node;
@@ -304,14 +318,14 @@ public class WtOvrResource {
     private ArrayNode buildIncluded(MatchConfigurationDto dto) {
         ArrayNode inc = mapper.createArrayNode();
 
-        String matchId  = s(dto.getMatchNumber());
-        String homeId   = competitorId(dto, true);
-        String awayId   = competitorId(dto, false);
+        String matchId = s(dto.getMatchNumber());
+        String homeId = competitorId(dto, true);
+        String awayId = competitorId(dto, false);
         String homePartId = homeId + "-part";
         String awayPartId = awayId + "-part";
-        String configId  = "config-" + matchId;
-        String eventId   = "event-" + matchId;
-        String refAssId  = "refass-" + matchId;
+        String configId = "config-" + matchId;
+        String eventId = "event-" + matchId;
+        String refAssId = "refass-" + matchId;
 
         // ── competitors ──────────────────────────────────────────────────────
         inc.add(buildCompetitorNode(homeId, dto.getBlueAthlete(), homePartId));
@@ -345,9 +359,9 @@ public class WtOvrResource {
         node.put("id", id);
 
         ObjectNode attrs = mapper.createObjectNode();
-        String given  = a != null ? s(a.getGivenName()) : "";
+        String given = a != null ? s(a.getGivenName()) : "";
         String family = a != null ? s(a.getFamilyName()) : "";
-        String full   = (given + " " + family).trim();
+        String full = (given + " " + family).trim();
         String sboard = a != null ? s(a.getScoreboardName()) : id;
 
         attrs.put("competitorType", "INDIVIDUAL");
@@ -357,8 +371,8 @@ public class WtOvrResource {
         attrs.put("tvInitialName", sboard);
         attrs.put("scoreboardName", sboard);
         attrs.put("scoreboardInitialName", sboard);
-        attrs.put("rank",    a != null && a.getRank() != null ? a.getRank() : 0);
-        attrs.put("seed",    a != null && a.getSeed() != null ? a.getSeed() : 0);
+        attrs.put("rank", a != null && a.getRank() != null ? a.getRank() : 0);
+        attrs.put("seed", a != null && a.getSeed() != null ? a.getSeed() : 0);
         attrs.put("country", a != null ? s(a.getFlagAbbreviation()) : "");
         node.set("attributes", attrs);
 
@@ -390,31 +404,31 @@ public class WtOvrResource {
         node.put("id", id);
 
         ObjectNode attrs = mapper.createObjectNode();
-        String given  = a != null ? s(a.getGivenName()) : "";
+        String given = a != null ? s(a.getGivenName()) : "";
         String family = a != null ? s(a.getFamilyName()) : "";
-        String full   = (given + " " + family).trim();
+        String full = (given + " " + family).trim();
         String sboard = a != null ? s(a.getScoreboardName()) : id;
         String country = a != null ? s(a.getFlagAbbreviation()) : "";
-        String gender  = a != null && a.getGender() != null ? a.getGender() : "MALE";
+        String gender = a != null && a.getGender() != null ? a.getGender() : "MALE";
 
         attrs.put("licenseNumber", a != null && !s(a.getWfId()).isEmpty()
                 ? a.getWfId() : (a != null ? s(a.getOvrInternalId()) : id));
-        attrs.put("givenName",            given);
-        attrs.put("familyName",           family);
-        attrs.put("passportGivenName",    given);
-        attrs.put("passportFamilyName",   family);
-        attrs.put("preferredGivenName",   given);
-        attrs.put("preferredFamilyName",  family);
-        attrs.put("printName",            full.isEmpty() ? sboard : full);
-        attrs.put("printInitialName",     sboard);
-        attrs.put("tvName",               full.isEmpty() ? sboard : full);
-        attrs.put("tvInitialName",        sboard);
-        attrs.put("scoreboardName",       sboard);
+        attrs.put("givenName", given);
+        attrs.put("familyName", family);
+        attrs.put("passportGivenName", given);
+        attrs.put("passportFamilyName", family);
+        attrs.put("preferredGivenName", given);
+        attrs.put("preferredFamilyName", family);
+        attrs.put("printName", full.isEmpty() ? sboard : full);
+        attrs.put("printInitialName", sboard);
+        attrs.put("tvName", full.isEmpty() ? sboard : full);
+        attrs.put("tvInitialName", sboard);
+        attrs.put("scoreboardName", sboard);
         attrs.put("scoreboardInitialName", sboard);
-        attrs.put("gender",               gender);
-        attrs.put("birthDate",            "");
-        attrs.put("mainRole",             "ATHLETE");
-        attrs.put("country",              country);
+        attrs.put("gender", gender);
+        attrs.put("birthDate", "");
+        attrs.put("mainRole", "ATHLETE");
+        attrs.put("country", country);
         node.set("attributes", attrs);
 
         // organization relationship — null
@@ -442,16 +456,16 @@ public class WtOvrResource {
 
         ObjectNode attrs = mapper.createObjectNode();
         var rc = dto.getRoundsConfig();
-        attrs.put("rules",          s(dto.getMatchVictoryCriteria()).isEmpty() ? "CONVENTIONAL" : dto.getMatchVictoryCriteria());
-        attrs.put("rounds",         rc != null && rc.getRounds() != null ? rc.getRounds() : 3);
-        attrs.put("maxDifference",  dto.getDifferencialScore() != null ? dto.getDifferencialScore() : 12);
-        attrs.put("maxPenalties",   dto.getMaxAllowedGamJeoms() != null ? dto.getMaxAllowedGamJeoms() : 10);
+        attrs.put("rules", s(dto.getMatchVictoryCriteria()).isEmpty() ? "CONVENTIONAL" : dto.getMatchVictoryCriteria());
+        attrs.put("rounds", rc != null && rc.getRounds() != null ? rc.getRounds() : 3);
+        attrs.put("maxDifference", dto.getDifferencialScore() != null ? dto.getDifferencialScore() : 12);
+        attrs.put("maxPenalties", dto.getMaxAllowedGamJeoms() != null ? dto.getMaxAllowedGamJeoms() : 10);
 
         // timing — Strings en formato "mm:ss"
         ObjectNode timing = mapper.createObjectNode();
-        timing.put("round",  rc != null ? rc.getRoundTimeStr()   : "02:00");
-        timing.put("rest",   rc != null ? rc.getKyeShiTimeStr()  : "01:00");
-        timing.put("injury", rc != null ? rc.getKyeShiTimeStr()  : "01:00");
+        timing.put("round", rc != null ? rc.getRoundTimeStr() : "02:00");
+        timing.put("rest", rc != null ? rc.getKyeShiTimeStr() : "01:00");
+        timing.put("injury", rc != null ? rc.getKyeShiTimeStr() : "01:00");
         attrs.set("timing", timing);
 
         // thresholds
@@ -478,7 +492,7 @@ public class WtOvrResource {
         // videoReplayQuota — MatchScore {home, away}
         ObjectNode quota = mapper.createObjectNode();
         quota.put("home", dto.getBlueAthleteVideoQuota() != null ? dto.getBlueAthleteVideoQuota() : 2);
-        quota.put("away", dto.getRedAthleteVideoQuota()  != null ? dto.getRedAthleteVideoQuota()  : 2);
+        quota.put("away", dto.getRedAthleteVideoQuota() != null ? dto.getRedAthleteVideoQuota() : 2);
         attrs.set("videoReplayQuota", quota);
 
         node.set("attributes", attrs);
@@ -499,22 +513,22 @@ public class WtOvrResource {
 
         ObjectNode attrs = mapper.createObjectNode();
         String catName = dto != null && dto.getCategory() != null ? s(dto.getCategory().getName()) : "";
-        String gender  = dto != null && dto.getCategory() != null ? s(dto.getCategory().getGender()) : "MALE";
-        String subCat  = dto != null && dto.getCategory() != null ? s(dto.getCategory().getSubCategory()) : "";
+        String gender = dto != null && dto.getCategory() != null ? s(dto.getCategory().getGender()) : "MALE";
+        String subCat = dto != null && dto.getCategory() != null ? s(dto.getCategory().getSubCategory()) : "";
 
-        attrs.put("discipline",    "Taekwondo");
-        attrs.put("division",      subCat.isEmpty() ? catName : subCat);
-        attrs.put("gender",        gender.isEmpty() ? "MALE" : gender);
-        attrs.put("name",          catName.isEmpty() ? "Event" : catName);
-        attrs.put("abbreviation",  catName.isEmpty() ? "Event" : catName);
+        attrs.put("discipline", "Taekwondo");
+        attrs.put("division", subCat.isEmpty() ? catName : subCat);
+        attrs.put("gender", gender.isEmpty() ? "MALE" : gender);
+        attrs.put("name", catName.isEmpty() ? "Event" : catName);
+        attrs.put("abbreviation", catName.isEmpty() ? "Event" : catName);
         attrs.put("weightCategory", catName.isEmpty() ? "Event" : catName);
-        attrs.put("sportClass",    "");
-        attrs.put("category",      catName.isEmpty() ? "SENIORS" : catName);
+        attrs.put("sportClass", "");
+        attrs.put("category", catName.isEmpty() ? "SENIORS" : catName);
         node.set("attributes", attrs);
 
         ObjectNode rels = mapper.createObjectNode();
         rels.set("medalWinners", relMany());
-        rels.set("matches",      relMany());
+        rels.set("matches", relMany());
         node.set("relationships", rels);
 
         return node;
@@ -556,7 +570,8 @@ public class WtOvrResource {
     private ObjectNode relOne(String type, String id) {
         ObjectNode rel = mapper.createObjectNode();
         ObjectNode d = mapper.createObjectNode();
-        d.put("type", type); d.put("id", id);
+        d.put("type", type);
+        d.put("id", id);
         rel.set("data", d);
         return rel;
     }
@@ -576,24 +591,33 @@ public class WtOvrResource {
     }
 
     // ── GET /match-configurations/{id} ───────────────────────────────────────
-    @GET @Path("/match-configurations/{id}") @Produces(JSONAPI)
+    @GET
+    @Path("/match-configurations/{id}")
+    @Produces(JSONAPI)
     public Response getMatchConfig(@PathParam("id") String id) {
         log.info("WT OVR GET /match-configurations/{}", id);
-        MatchConfigurationDto dto = matchStateService.getCombateByConfigId(id);
+        String matchId = id.replace("config-", "");
+        Match match = Match.findById(matchId);
+        MatchConfigurationDto dto = match != null ? matchStateService.convertMatchToDto(match) : new MatchConfigurationDto();
         ObjectNode root = mapper.createObjectNode();
-        root.set("data", buildConfigNode(id, dto != null ? dto : new MatchConfigurationDto()));
+        root.set("data", buildConfigNode(id, dto));
         return Response.ok(root.toString()).type(JSONAPI).build();
     }
 
     // ── GET /sessions/{id} ────────────────────────────────────────────────────
-    @GET @Path("/sessions/{id}") @Produces(JSONAPI)
+    @GET
+    @Path("/sessions/{id}")
+    @Produces(JSONAPI)
     public Response getSession(@PathParam("id") String id) {
         log.info("WT OVR GET /sessions/{}", id);
         ObjectNode root = mapper.createObjectNode();
         ObjectNode data = mapper.createObjectNode();
-        data.put("type", "sessions"); data.put("id", id);
+        data.put("type", "sessions");
+        data.put("id", id);
         ObjectNode attrs = mapper.createObjectNode();
-        attrs.put("name", "Session"); attrs.put("startTime", ""); attrs.put("endTime", "");
+        attrs.put("name", "Session");
+        attrs.put("startTime", "");
+        attrs.put("endTime", "");
         attrs.put("scheduleStatus", "ACTIVE");
         data.set("attributes", attrs);
         data.set("relationships", mapper.createObjectNode());
@@ -602,20 +626,26 @@ public class WtOvrResource {
     }
 
     // ── GET /organizations/{id} ───────────────────────────────────────────────
-    @GET @Path("/organizations/{id}") @Produces(JSONAPI)
+    @GET
+    @Path("/organizations/{id}")
+    @Produces(JSONAPI)
     public Response getOrganization(@PathParam("id") String id) {
         log.info("WT OVR GET /organizations/{}", id);
         ObjectNode root = mapper.createObjectNode();
         ObjectNode data = mapper.createObjectNode();
-        data.put("type", "organizations"); data.put("id", id);
+        data.put("type", "organizations");
+        data.put("id", id);
         ObjectNode attrs = mapper.createObjectNode();
-        attrs.put("name", "FGT"); attrs.put("country", "ESP");
+        attrs.put("name", "FGT");
+        attrs.put("country", "ESP");
         data.set("attributes", attrs);
         data.set("relationships", mapper.createObjectNode());
         root.set("data", data);
         return Response.ok(root.toString()).type(JSONAPI).build();
     }
 
-    private String s(String v) { return v != null ? v : ""; }
+    private String s(String v) {
+        return v != null ? v : "";
+    }
 }
 // Este bloque non se pode engadir así — hai que facelo dentro da clase
