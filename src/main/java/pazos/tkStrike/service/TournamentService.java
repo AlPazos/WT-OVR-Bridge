@@ -6,28 +6,28 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pazos.tkStrike.entity.Athlete;
 import pazos.tkStrike.entity.Match;
-import pazos.tkStrike.model.MatchResultDto;
 
 @ApplicationScoped
 public class TournamentService {
 
     private static final Logger log = LoggerFactory.getLogger(TournamentService.class);
 
+    // winnerSide accepts "home"/"away" (WT OVR) or "BLUE"/"RED"
     @Transactional
-    public void advance(MatchResultDto dto) {
-        Match match = Match.findById(dto.getMatchNumber());
+    public void advance(String matchNumber, String winnerSide) {
+        Match match = Match.findById(matchNumber);
         if (match == null || match.nextMatchNumber == null) return;
 
-        Athlete winner = "BLUE".equalsIgnoreCase(dto.getMatchWinnerColor())
-                ? match.blueAthlete : match.redAthlete;
+        boolean isHome = "home".equalsIgnoreCase(winnerSide) || "BLUE".equalsIgnoreCase(winnerSide);
+        Athlete winner = isHome ? match.blueAthlete : match.redAthlete;
         if (winner == null) {
-            log.warn("Ganador nulo en combate {}", dto.getMatchNumber());
+            log.warn("Null winner in match {}", matchNumber);
             return;
         }
 
         Match next = Match.findById(match.nextMatchNumber);
         if (next == null) {
-            log.warn("Combate siguiente no encontrado: {}", match.nextMatchNumber);
+            log.warn("Next match not found: {}", match.nextMatchNumber);
             return;
         }
 
@@ -37,8 +37,7 @@ public class TournamentService {
             next.redAthlete = winner;
         }
 
-        log.info("Ganador {} ({}) avanza a {} como {}",
-                winner.scoreboardName, dto.getMatchWinnerColor(),
-                match.nextMatchNumber, match.nextMatchColor);
+        log.info("Winner {} advances to {} as {}",
+                winner.scoreboardName, match.nextMatchNumber, match.nextMatchColor);
     }
 }

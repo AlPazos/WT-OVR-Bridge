@@ -4,15 +4,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pazos.tkStrike.entity.Match;
+import pazos.tkStrike.entity.MatchEvent;
 import pazos.tkStrike.model.MatchConfigurationDto;
 import pazos.tkStrike.model.WtOvrActionDto;
 import pazos.tkStrike.service.MatchStateService;
+import pazos.tkStrike.service.TournamentService;
 
 import java.util.List;
 
@@ -41,6 +44,9 @@ public class WtOvrResource {
     private final ObjectMapper mapper = new ObjectMapper();
     @Inject
     MatchStateService matchStateService;
+
+    @Inject
+    TournamentService tournamentService;
 
     // ── /status ──────────────────────────────────────────────────────────────
     @GET
@@ -151,22 +157,28 @@ public class WtOvrResource {
     @Path("/matches/{id}/actions")
     @Consumes(JSONAPI)
     @Produces(JSONAPI)
+    @Transactional
     public Response postAction(@PathParam("id") String matchId, String body) {
         try {
             WtOvrActionDto action = mapper.readValue(body, WtOvrActionDto.class);
-            String actionType = action.getData() != null && action.getData().getAttributes() != null
-                    ? action.getData().getAttributes().getAction() : "UNKNOWN";
+            var attrs = action.getData() != null ? action.getData().getAttributes() : null;
+            String actionType = attrs != null ? attrs.getAction() : "UNKNOWN";
             log.info("WT OVR POST /matches/{}/actions — action={}", matchId, actionType);
 
-            Match found = Match.findById(matchId);
-            if (found != null) {
-                String ring = found.mat != null ? String.valueOf(found.mat) : "1";
+            Match match = Match.findById(matchId);
+            if (match != null && attrs != null) {
+                Integer bluePoints    = attrs.getScore()     != null ? attrs.getScore().getHome()     : null;
+                Integer redPoints     = attrs.getScore()     != null ? attrs.getScore().getAway()     : null;
+                Integer bluePenalties = attrs.getPenalties() != null ? attrs.getPenalties().getHome() : null;
+                Integer redPenalties  = attrs.getPenalties() != null ? attrs.getPenalties().getAway() : null;
+                new MatchEvent(match, attrs.getRound(), null, actionType,
+                        bluePoints, bluePenalties, redPoints, redPenalties).persist();
             }
         } catch (Exception e) {
             log.warn("WT OVR action parse error: {}", e.getMessage());
         }
 
-        // TKStrike ignora o body da resposta (ResponseBodyException capturada)
+        // TKStrike ignores the response body
         ObjectNode root = mapper.createObjectNode();
         ObjectNode data = mapper.createObjectNode();
         data.put("type", "match-actions");
@@ -181,8 +193,18 @@ public class WtOvrResource {
     @Path("/matches/{id}/results")
     @Consumes(JSONAPI)
     @Produces(JSONAPI)
+    @Transactional
     public Response postResult(@PathParam("id") String matchId, String body) {
         log.info("WT OVR POST /matches/{}/results", matchId);
+        try {
+            com.fasterxml.jackson.databind.JsonNode json = mapper.readTree(body);
+            com.fasterxml.jackson.databind.JsonNode winner = json.path("data").path("attributes").path("winner");
+            if (!winner.isMissingNode()) {
+                tournamentService.advance(matchId, winner.asText());
+            }
+        } catch (Exception e) {
+            log.warn("WT OVR result parse error: {}", e.getMessage());
+        }
         ObjectNode root = mapper.createObjectNode();
         ObjectNode data = mapper.createObjectNode();
         data.put("type", "match-results");

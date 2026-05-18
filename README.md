@@ -13,12 +13,11 @@ Built with Quarkus 3, Hibernate ORM Panache and Jakarta REST.
 ```
 TkStrike app
     │
-    ├── POST /{ring}/events-listener/new-match-configured
-    ├── POST /{ring}/events-listener/new-match-event
-    └── POST /{ring}/events-listener/match-result  ──► TournamentService (advances winner)
-    
-    GET  /matches, /matches/{id}, /competitors, /participants ...
-    └── WtOvrResource  ──► MatchStateService  ──► MySQL
+    ├── GET  /matches, /matches/{id}, /competitors, /participants ...
+    ├── POST /matches/{id}/actions  ──► MatchEvent persisted
+    └── POST /matches/{id}/results  ──► TournamentService (advances winner to next match)
+
+WtOvrResource  ──► MatchStateService  ──► MySQL
 ```
 
 ---
@@ -79,15 +78,6 @@ On startup, if the database is empty, the CSVs are loaded automatically.
 | GET | `/match-configurations/{id}` | Match configuration |
 | POST | `/matches/{id}/actions` | Match action |
 | POST | `/matches/{id}/results` | Match result |
-
-### Events listener (consumed by TkStrike)
-
-| Method | Path | Description |
-|---|---|---|
-| GET | `/{ring}/events-listener/ping` | Health check |
-| POST | `/{ring}/events-listener/new-match-configured` | Match configured |
-| POST | `/{ring}/events-listener/new-match-event` | Scoring event (persisted) |
-| POST | `/{ring}/events-listener/match-result` | Match result — triggers bracket advancement |
 
 ### Admin
 
