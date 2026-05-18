@@ -1,6 +1,6 @@
 # TkSrtrike Bridge
 
-This project has not beneficial purpose, it is just me aplying the knowledge I have abaout Java, Quarkus and REST to create a simple bridge between the [TkStrike](
+This project has not beneficial purpose, it is just me aplying the knowledge I have abaout Java, Quarkus and REST to create a simple bridge between the tkstrike API and a REST API that everyone can use to get the data from tkstrike without the need of using external software to do it.
 
 If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
 
