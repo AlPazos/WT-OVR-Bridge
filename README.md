@@ -1,6 +1,6 @@
-# tkstrike-bridge
+# TkSrtrike Bridge
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+This project has not beneficial purpose, it is just me aplying the knowledge I have abaout Java, Quarkus and REST to create a simple bridge between the [TkStrike](
 
 If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
 
