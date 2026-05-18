@@ -221,24 +221,9 @@ public class WtOvrResource {
         return Response.status(201).entity(root.toString()).type(JSONAPI).build();
     }
 
-    // ── Construtores JSON:API ─────────────────────────────────────────────────
-
-    private String buildListResponse(MatchConfigurationDto dto, Integer mat) {
-        try {
-            ObjectNode root = mapper.createObjectNode();
-            ArrayNode data = mapper.createArrayNode();
-            data.add(buildMatchNode(dto, mat));
-            root.set("data", data);
-            root.set("included", buildIncluded(dto));
-            return root.toString();
-        } catch (Exception e) {
-            log.error("Error buildListResponse", e);
-            return "{\"data\":[],\"included\":[]}";
-        }
-    }
 
     /**
-     * Construye una respuesta JSON:API con MÚLTIPLES combates
+     * Builds a JSON:API response for multiples matches
      */
     private String buildListResponseMultiple(List<MatchConfigurationDto> dtos, Integer mat) {
         try {
@@ -246,10 +231,8 @@ public class WtOvrResource {
             ArrayNode data = mapper.createArrayNode();
             ArrayNode included = mapper.createArrayNode();
 
-            // Agregar cada combate a data
             for (MatchConfigurationDto dto : dtos) {
                 data.add(buildMatchNode(dto, mat != null ? mat : dto.getMat()));
-                // Agregar todos los included de cada combate
                 included.addAll(buildIncluded(dto));
             }
 
@@ -298,13 +281,13 @@ public class WtOvrResource {
         attrs.put("mat", mat != null ? mat : 1);
         attrs.put("number", matchId);
         // phase como String — TKStrike usa match.getPhase().toString()
-        // Valores: R256, R128, R64, R32, R16, QF, SF, F, BRZ, BMC
+        // values: R256, R128, R64, R32, R16, QF, SF, F, BRZ, BMC
         attrs.put("phase", s(dto.getPhase()).isEmpty() ? "SF" : dto.getPhase());
         attrs.put("round", 1);
         attrs.put("roundTime", dto.getRoundsConfig() != null
                 ? dto.getRoundsConfig().getRoundTimeStr() : "02:00");
 
-        // score e penalties — MatchScore {home, away}
+        // score and penalties — MatchScore {home, away}
         ObjectNode score = mapper.createObjectNode();
         score.put("home", 0);
         score.put("away", 0);
@@ -324,7 +307,7 @@ public class WtOvrResource {
 
         node.set("attributes", attrs);
 
-        // Relationships — todos os que pide TKStrike no include=
+        // Relationships: homeCompetitor, awayCompetitor, matchConfiguration, refereeAssignment, event, session, results
         ObjectNode rels = mapper.createObjectNode();
         rels.set("homeCompetitor", relOne("competitors", homeId));
         rels.set("awayCompetitor", relOne("competitors", awayId));
@@ -403,7 +386,7 @@ public class WtOvrResource {
         attrs.put("country", a != null ? s(a.getFlagAbbreviation()) : "");
         node.set("attributes", attrs);
 
-        // participants é List<Participant> → relationship como ARRAY
+        // participants is List<Participant> → relationship as ARRAY
         ObjectNode rels = mapper.createObjectNode();
         ObjectNode partRel = mapper.createObjectNode();
         ArrayNode partData = mapper.createArrayNode();
