@@ -42,7 +42,7 @@ public class AdminResource {
         Match.deleteAll();
         Athlete.deleteAll();
         Category.deleteAll();
-        long total = matchStateService.cargarCsv();
+        long total = matchStateService.loadCsv();
         log.info("Recarga completada — {} combates", total);
         return Response.ok("{\"combates\":" + total + "}").build();
     }

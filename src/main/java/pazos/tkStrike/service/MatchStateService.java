@@ -21,19 +21,19 @@ public class MatchStateService {
 
     void onStart(@Observes StartupEvent ev) {
         if (Match.count() == 0) {
-            cargarCsv();
+            loadCsv();
         }
     }
 
     @Transactional(Transactional.TxType.REQUIRED)
-    public long cargarCsv() {
+    public long loadCsv() {
         new CsvMatchLoader().load();
         long total = Match.count();
         log.info("CSV cargado en BD — {} combates", total);
         return total;
     }
 
-    public MatchConfigurationDto getNextCombate(String ring) {
+    public MatchConfigurationDto getNextCombat(String ring) {
         try {
             Match match = Match.getNextForMat(Integer.parseInt(ring));
             return match != null ? convertMatchToDto(match) : null;
