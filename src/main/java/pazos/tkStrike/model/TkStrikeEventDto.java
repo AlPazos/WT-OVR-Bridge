@@ -3,7 +3,7 @@ package pazos.tkStrike.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * DTO exacto de TKStrike — baseado no código fonte real de tkStrike-gen3.jar
+ * Exact TKStrike DTO — based on the actual source of tkStrike-gen3.jar.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class TkStrikeEventDto {
@@ -271,7 +271,7 @@ public class TkStrikeEventDto {
         this.hitlevel = v;
     }
 
-    // getter real: getPARASpinning() non isIsPARASpinning()
+    // real getter is getPARASpinning(), not isIsPARASpinning()
     public Boolean getPARASpinning() {
         return isPARASpinning;
     }

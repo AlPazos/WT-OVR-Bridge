@@ -4,8 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 
 /**
- * DTO exacto de TKStrike — baseado no código fonte real de tkStrike-gen3.jar
- * ATENCIÓN: matchWinner é AthleteDto, non unha clase interna propia
+ * Exact TKStrike DTO — based on the actual source of tkStrike-gen3.jar.
+ * matchWinner is AthleteDto, not a custom inner class.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class MatchResultDto {

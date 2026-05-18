@@ -17,23 +17,21 @@ import pazos.tkStrike.service.MatchStateService;
 import java.util.List;
 
 /**
- * Protocolo WT OVR (JSON:API/crnk).
+ * WT OVR protocol (JSON:API/crnk).
  * <p>
- * TKStrike inclúe no ?include= todas estas relacións:
- * homeCompetitor, homeCompetitor.participants,
- * awayCompetitor, awayCompetitor.participants,
- * matchConfiguration, refereeAssignment,
+ * TKStrike requests ?include= with: homeCompetitor, homeCompetitor.participants,
+ * awayCompetitor, awayCompetitor.participants, matchConfiguration, refereeAssignment,
  * refereeAssignment.refJ1/J2/J3/CR/RJ/TA, event
  * <p>
- * Polo tanto o included debe conter:
- * - competitors (home +ike inclúe no ?include= todas estas  away) con participants como ARRAY de refs
- * - participants (home + away) con todos os campos de Participant.java
- * - match-configurations con timing (Strings "mm:ss"), thresholds, goldenPoint, videoReplayQuota, rules
- * - match-referee-assignments (baleiro se non hai árbitros)
- * - events con discipline, division, gender, name, abbreviation, weightCategory
+ * Therefore included must contain:
+ * - competitors (home + away) with participants as an ARRAY of refs
+ * - participants (home + away) with all Participant.java fields
+ * - match-configurations with timing (Strings "mm:ss"), thresholds, goldenPoint, videoReplayQuota, rules
+ * - match-referee-assignments (empty when no referees assigned)
+ * - events with discipline, division, gender, name, abbreviation, weightCategory
  * <p>
- * O endpoint GET /participants/{id} tamén é necesario porque crnk
- * fai lazy fetch se non atopa o participant no included.
+ * GET /participants/{id} is also needed because crnk does a lazy fetch
+ * when the participant is not found in the included array.
  */
 @Path("/")
 public class WtOvrResource {
@@ -248,11 +246,11 @@ public class WtOvrResource {
     }
 
     /**
-     * Constrúe o nodo Match completo en JSON:API.
-     * Campos de Match.java: id, status, mat, number, phase (String via toString()),
-     * score, penalties, round, roundTime, result
+     * Builds the full Match node in JSON:API format.
+     * Fields from Match.java: id, status, mat, number, phase (String via toString()),
+     * score, penalties, round, roundTime, result.
      * Relationships: homeCompetitor, awayCompetitor, matchConfiguration,
-     * refereeAssignment, event, session
+     * refereeAssignment, event, session.
      */
     private ObjectNode buildMatchNode(MatchConfigurationDto dto, Integer mat) {
         String matchId = s(dto.getMatchNumber());
@@ -312,8 +310,8 @@ public class WtOvrResource {
     }
 
     /**
-     * Constrúe o array included con todos os recursos necesarios.
-     * crnk resolve as relacións desde o included — se están aquí non fai GET extra.
+     * Builds the included array with all required resources.
+     * crnk resolves relationships from included — if present here no extra GET is made.
      */
     private ArrayNode buildIncluded(MatchConfigurationDto dto) {
         ArrayNode inc = mapper.createArrayNode();
@@ -350,8 +348,8 @@ public class WtOvrResource {
     /**
      * Competitor — Competitor.java:
      * id, competitorType, printName, printInitialName, tvName, tvInitialName,
-     * scoreboardName, scoreboardInitialName, rank, seed, country
-     * Relationship participants: List<Participant> → ARRAY de refs
+     * scoreboardName, scoreboardInitialName, rank, seed, country.
+     * Relationship participants: List<Participant> → ARRAY of refs.
      */
     private ObjectNode buildCompetitorNode(String id, MatchConfigurationDto.AthleteDto a, String partId) {
         ObjectNode node = mapper.createObjectNode();
@@ -396,7 +394,7 @@ public class WtOvrResource {
      * id, licenseNumber, givenName, familyName, passportGivenName, passportFamilyName,
      * preferredGivenName, preferredFamilyName, printName, printInitialName,
      * tvName, tvInitialName, scoreboardName, scoreboardInitialName,
-     * gender (enum: FEMALE/MALE/MIXED), birthDate (String), mainRole, country
+     * gender (enum: FEMALE/MALE/MIXED), birthDate (String), mainRole, country.
      */
     private ObjectNode buildParticipantNode(String id, MatchConfigurationDto.AthleteDto a) {
         ObjectNode node = mapper.createObjectNode();
@@ -443,7 +441,7 @@ public class WtOvrResource {
 
     /**
      * MatchConfiguration — MatchConfiguration.java:
-     * id, rules (enum: CONVENTIONAL/BESTOF3), rounds, maxDifference, maxPenalties
+     * id, rules (enum: CONVENTIONAL/BESTOF3), rounds, maxDifference, maxPenalties.
      * timing: { round: "02:00", rest: "01:00", injury: "01:00" }  ← Strings
      * thresholds: { body: int, head: int }
      * goldenPoint: { enabled: bool, time: "01:00" }
@@ -461,7 +459,7 @@ public class WtOvrResource {
         attrs.put("maxDifference", dto.getDifferencialScore() != null ? dto.getDifferencialScore() : 12);
         attrs.put("maxPenalties", dto.getMaxAllowedGamJeoms() != null ? dto.getMaxAllowedGamJeoms() : 10);
 
-        // timing — Strings en formato "mm:ss"
+        // timing — Strings in "mm:ss" format
         ObjectNode timing = mapper.createObjectNode();
         timing.put("round", rc != null ? rc.getRoundTimeStr() : "02:00");
         timing.put("rest", rc != null ? rc.getKyeShiTimeStr() : "01:00");
@@ -503,8 +501,8 @@ public class WtOvrResource {
     /**
      * Event — Event.java:
      * id, discipline, division, gender (enum: FEMALE/MALE/MIXED),
-     * name, abbreviation, weightCategory, sportClass, category
-     * Usado por WtDataToTkStrikeConverter.convertEvent() para construír CategoryDto
+     * name, abbreviation, weightCategory, sportClass, category.
+     * Used by WtDataToTkStrikeConverter.convertEvent() to build CategoryDto.
      */
     private ObjectNode buildEventNode(String id, MatchConfigurationDto dto) {
         ObjectNode node = mapper.createObjectNode();
@@ -536,8 +534,8 @@ public class WtOvrResource {
 
     /**
      * MatchRefereeAssignment — MatchRefereeAssignment.java:
-     * id + relationships refJ1/J2/J3/CR/RJ/TA todos con SerializeType.ONLY_ID
-     * Sen árbitros configurados → todos null
+     * id + relationships refJ1/J2/J3/CR/RJ/TA all with SerializeType.ONLY_ID.
+     * No referees configured → all null.
      */
     private ObjectNode buildRefAssNode(String id, String matchId) {
         ObjectNode node = mapper.createObjectNode();
@@ -558,7 +556,7 @@ public class WtOvrResource {
         return node;
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────────────
 
     private String competitorId(MatchConfigurationDto dto, boolean home) {
         var a = home ? dto.getBlueAthlete() : dto.getRedAthlete();
@@ -566,7 +564,7 @@ public class WtOvrResource {
         return (home ? "home" : "away") + "-" + dto.getMatchNumber();
     }
 
-    // Relationship toOne
+    // to-one relationship
     private ObjectNode relOne(String type, String id) {
         ObjectNode rel = mapper.createObjectNode();
         ObjectNode d = mapper.createObjectNode();
@@ -576,14 +574,14 @@ public class WtOvrResource {
         return rel;
     }
 
-    // Relationship toOne null
+    // null to-one relationship
     private ObjectNode relNull() {
         ObjectNode rel = mapper.createObjectNode();
         rel.set("data", mapper.nullNode());
         return rel;
     }
 
-    // Relationship toMany baleira
+    // empty to-many relationship
     private ObjectNode relMany() {
         ObjectNode rel = mapper.createObjectNode();
         rel.set("data", mapper.createArrayNode());
@@ -648,4 +646,3 @@ public class WtOvrResource {
         return v != null ? v : "";
     }
 }
-// Este bloque non se pode engadir así — hai que facelo dentro da clase

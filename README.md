@@ -1,69 +1,108 @@
-# TkSrtrike Bridge
+# TkStrike Bridge
 
-This project has not beneficial purpose, it is just me aplying the knowledge I have abaout Java, Quarkus and REST to create a simple bridge between the tkstrike API and a REST API that everyone can use to get the data from tkstrike without the need of using external software to do it.
+Bridge between the [TkStrike](https://tkstrike.net) taekwondo competition software and any external system. TkStrike speaks a proprietary WT OVR protocol — this service translates it into a clean REST API backed by a MySQL database, and manages the tournament bracket automatically as results come in.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+Built with Quarkus 3, Hibernate ORM Panache and Jakarta REST.
 
-## Running the application in dev mode
+---
 
-You can run your application in dev mode that enables live coding using:
+## Architecture
 
-```shell script
+```
+TkStrike app
+    │
+    ├── POST /{ring}/events-listener/new-match-configured
+    ├── POST /{ring}/events-listener/new-match-event
+    └── POST /{ring}/events-listener/match-result  ──► TournamentService (advances winner)
+    
+    GET  /matches, /matches/{id}, /competitors, /participants ...
+    └── WtOvrResource  ──► MatchStateService  ──► MySQL
+```
+
+---
+
+## Data model
+
+| Table | PK | Description |
+|---|---|---|
+| `categories` | autoincrement | Competition rules (rounds, times, thresholds) |
+| `athletes` | `ovrInternalId` (String) | Competitors |
+| `matches` | `matchNumber` (String) | Bracket — QF/SF/F per mat |
+| `match_events` | autoincrement | Every scoring event during a match |
+
+Match numbers follow the pattern `<mat><sequence>`: `101`, `102`… for mat 1, `201`, `202`… for mat 2. The `nextMatchNumber` and `nextMatchColor` columns encode the bracket advancement path.
+
+---
+
+## Configuration
+
+`src/main/resources/application.properties`:
+
+```properties
+quarkus.datasource.db-kind=mysql
+quarkus.datasource.jdbc.url=jdbc:mysql://localhost:3306/tkstrike
+quarkus.datasource.username=prueba
+quarkus.datasource.password=prueba
+quarkus.datasource.db-version=5.5.5
+quarkus.hibernate-orm.schema-management.strategy=update
+```
+
+---
+
+## Initial data
+
+Three CSV files under `src/main/resources/` define the tournament:
+
+| File | Content |
+|---|---|
+| `categories.csv` | Category rules |
+| `athletes.csv` | All athletes |
+| `matches.csv` | Full bracket with athlete assignments for QF; SF/F left empty |
+
+On startup, if the database is empty, the CSVs are loaded automatically.
+
+---
+
+## API endpoints
+
+### WT OVR protocol (consumed by TkStrike)
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/matches` | All matches (filterable by `?filter[mat]=`) |
+| GET | `/matches/{id}` | Single match |
+| GET | `/competitors/{id}` | Competitor |
+| GET | `/participants/{id}` | Participant |
+| GET | `/events/{id}` | Event |
+| GET | `/match-configurations/{id}` | Match configuration |
+| POST | `/matches/{id}/actions` | Match action |
+| POST | `/matches/{id}/results` | Match result |
+
+### Events listener (consumed by TkStrike)
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/{ring}/events-listener/ping` | Health check |
+| POST | `/{ring}/events-listener/new-match-configured` | Match configured |
+| POST | `/{ring}/events-listener/new-match-event` | Scoring event (persisted) |
+| POST | `/{ring}/events-listener/match-result` | Match result — triggers bracket advancement |
+
+### Admin
+
+| Method | Path | Description |
+|---|---|---|
+| DELETE | `/admin/reset` | Wipe the database |
+| GET | `/admin/reload` | Wipe and reload from CSVs |
+
+---
+
+## Running
+
+```shell
 ./mvnw quarkus:dev
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
-
-## Packaging and running the application
-
-The application can be packaged using:
-
-```shell script
+```shell
 ./mvnw package
+java -jar target/quarkus-app/quarkus-run.jar
 ```
-
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
-
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
-
-If you want to build an _über-jar_, execute the following command:
-
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
-```
-
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
-
-## Creating a native executable
-
-You can create a native executable using:
-
-```shell script
-./mvnw package -Dnative
-```
-
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
-
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
-```
-
-You can then execute your native executable with: `./target/tkstrike-bridge-1.0-SNAPSHOT-runner`
-
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
-
-## Related Guides
-
-- REST ([guide](https://quarkus.io/guides/rest)): Build RESTful web services and APIs using Jakarta REST (formerly
-  JAX-RS)
-- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus
-  REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it
-
-## Provided Code
-
-### REST
-
-Easily start your REST Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)

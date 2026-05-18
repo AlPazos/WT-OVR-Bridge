@@ -5,8 +5,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.Date;
 
 /**
- * DTO exacto de TKStrike — baseado no código fonte real de tkStrike-gen3.jar
- * Campos verificados de MatchConfigurationDto.java e clases internas
+ * Exact TKStrike DTO — based on the actual source of tkStrike-gen3.jar.
+ * Fields verified from MatchConfigurationDto.java and inner classes.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class MatchConfigurationDto {
@@ -33,7 +33,7 @@ public class MatchConfigurationDto {
     private RefereeDto refereeTA;
     private RefereeDto refereeRJ;
 
-    // ── Getters/Setters do DTO principal ─────────────────────────────────────
+    // ── Main DTO getters/setters ──────────────────────────────────────────────
     public String getInternalId() {
         return internalId;
     }
@@ -122,7 +122,7 @@ public class MatchConfigurationDto {
         this.isParaTkdMatch = v;
     }
 
-    // getter real: getParaTkdMatch() non getIsParaTkdMatch()
+    // real getter is getParaTkdMatch(), not getIsParaTkdMatch()
     public Boolean getParaTkdMatch() {
         return isParaTkdMatch;
     }
@@ -271,7 +271,7 @@ public class MatchConfigurationDto {
     }
 
     // ── AthleteDto ───────────────────────────────────────────────────────────
-    // ATENCIÓN: birthDate é Date no código real, non String
+    // birthDate is Date in the actual TKStrike code, not String
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class AthleteDto {
         private String ovrInternalId;
@@ -291,7 +291,7 @@ public class MatchConfigurationDto {
         private String tvName;
         private String tvInitialName;
         private String gender;
-        private Date birthDate;          // Date, non String
+        private Date birthDate;
         private String competitorType;
         private Integer rank;
         private Integer seed;
@@ -559,7 +559,7 @@ public class MatchConfigurationDto {
             this.goldenPointTimeSeconds = v;
         }
 
-        // Métodos helper para obter tempo en formato "mm:ss"
+        // helper methods to format time as "mm:ss"
         public String getRoundTimeStr() {
             if (roundTimeMinutes == null || roundTimeSeconds == null) return "02:00";
             return String.format("%02d:%02d", roundTimeMinutes, roundTimeSeconds);
