@@ -1,6 +1,8 @@
 # TkStrike Bridge
 
-Bridge between the [TkStrike](https://tkstrike.net) taekwondo competition software and any external system. TkStrike speaks a proprietary WT OVR protocol — this service translates it into a clean REST API backed by a MySQL database, and manages the tournament bracket automatically as results come in.
+> **Work in progress** — the project is under active development. APIs and data structures may change without notice.
+
+Bridge between the TkStrike taekwondo competition software and any external system. TkStrike speaks a proprietary WT OVR protocol — this service translates it into a clean REST API backed by a MySQL database, and manages the tournament bracket automatically as results come in.
 
 Built with Quarkus 3, Hibernate ORM Panache and Jakarta REST.
 
@@ -106,3 +108,37 @@ On startup, if the database is empty, the CSVs are loaded automatically.
 ./mvnw package
 java -jar target/quarkus-app/quarkus-run.jar
 ```
+
+---
+
+## Contributing
+
+Pull requests are welcome. Before opening one:
+
+1. **Fork** the repository and create your branch from `master`.
+2. Make sure the project builds cleanly: `./mvnw package -DskipTests`.
+3. Keep changes focused — one concern per PR.
+4. Follow the existing code style: no unnecessary comments, no unused abstractions.
+5. If you're adding a new endpoint or changing the data model, update the README accordingly.
+
+### Prerequisites
+
+- Java 17+
+- Maven 3.8+
+- MySQL instance (any version; set `quarkus.datasource.db-version` in `application.properties` to match yours)
+
+### Local setup
+
+```shell
+# 1. Clone and enter the project
+git clone https://github.com/Pazex04/TkStrike-Bridge.git
+cd TkStrike-Bridge
+
+# 2. Create the database
+mysql -u root -p -e "CREATE DATABASE tkstrike; CREATE USER 'prueba'@'localhost' IDENTIFIED BY 'prueba'; GRANT ALL ON tkstrike.* TO 'prueba'@'localhost';"
+
+# 3. Run in dev mode (tables and data are created automatically on first start)
+./mvnw quarkus:dev
+```
+
+To reset the database at any time: `GET http://localhost:8080/admin/reload`

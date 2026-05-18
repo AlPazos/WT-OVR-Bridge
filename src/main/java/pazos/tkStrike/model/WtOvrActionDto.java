@@ -3,22 +3,21 @@ package pazos.tkStrike.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * DTO que representa o JSON:API que TKStrike envía a
- * POST /matches/{id}/actions
+ * DTO for the JSON:API payload TKStrike sends to POST /matches/{id}/actions.
  * <p>
- * O JSON ten esta estrutura:
+ * JSON structure:
  * {
  * "data": {
  * "type": "match-actions",
  * "attributes": {
- * "action": "MATCH_LOADED",   ← enum Action como String
+ * "action": "MATCH_LOADED",   ← Action enum as String
  * "round": 1,
  * "roundTime": "02:00",
  * "position": 1,
  * "score": { "home": 0, "away": 0 },
  * "penalties": { "home": 0, "away": 0 },
  * "hitlevel": null,
- * "source": null,             ← enum ActionSource como String ou null
+ * "source": null,             ← ActionSource enum as String or null
  * "description": "MATCH_LOADED",
  * "timestamp": "2026-05-17T..."
  * },
@@ -30,7 +29,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * }
  * }
  * <p>
- * Enums Action confirmados no código fonte:
+ * Action enum values confirmed from source:
  * MATCH_LOADED, MATCH_START, ROUND_START, MATCH_TIME, MATCH_TIMEOUT,
  * MATCH_RESUME, ROUND_END, MATCH_END,
  * SCORE_HOME_PUNCH, SCORE_HOME_KICK, SCORE_HOME_TKICK, SCORE_HOME_SKICK,
@@ -43,7 +42,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * VR_HOME_REQUEST, VR_HOME_ACCEPTED, VR_HOME_REJECTED,
  * VR_AWAY_REQUEST, VR_AWAY_ACCEPTED, VR_AWAY_REJECTED
  * <p>
- * Enums ActionSource: HOME, AWAY, CR
+ * ActionSource enum values: HOME, AWAY, CR
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class WtOvrActionDto {
@@ -91,15 +90,15 @@ public class WtOvrActionDto {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class AttributesDto {
-        private String action;      // enum Action como String
+        private String action;      // Action enum as String
         private Integer hitlevel;
         private Integer round;
-        private String roundTime;   // "02:00" formato mm:ss
+        private String roundTime;   // "mm:ss" format
         private Integer position;
         private ScoreDto score;
         private ScoreDto penalties;
         private String description;
-        private String source;      // enum ActionSource como String ou null
+        private String source;      // ActionSource enum as String or null
         private String timestamp;
 
         public String getAction() {
