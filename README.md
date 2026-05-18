@@ -4,7 +4,7 @@
 
 Bridge between the TkStrike taekwondo competition software and any external system. TkStrike speaks a proprietary WT OVR protocol — this service translates it into a clean REST API backed by a MySQL database, and manages the tournament bracket automatically as results come in.
 
-The functionalities for receiving and sending data to an external REST API are not yet implemented; the data is loaded from CSV files in the resources folder.
+The functionalities for receiving and sending data to an external REST API are not yet implemented; the data is loaded from CSV files in the resources folder. This means the system works fully offline — if the external API is unavailable, the local CSV data is used instead and the application continues to operate normally.
 
 Built with Quarkus 3, Hibernate ORM Panache and Jakarta REST.
 
