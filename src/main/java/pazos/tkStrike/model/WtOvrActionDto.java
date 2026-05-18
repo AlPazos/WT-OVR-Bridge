@@ -17,7 +17,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * "score": { "home": 0, "away": 0 },
  * "penalties": { "home": 0, "away": 0 },
  * "hitlevel": null,
- * "source": null,             ← ActionSource enum as String or null
+ * "source": null, ← ActionSource enum as String or null
  * "description": "MATCH_LOADED",
  * "timestamp": "2026-05-17T..."
  * },

@@ -110,7 +110,10 @@ public class CsvMatchLoader {
                 String line;
                 boolean first = true;
                 while ((line = br.readLine()) != null) {
-                    if (first) { first = false; continue; }
+                    if (first) {
+                        first = false;
+                        continue;
+                    }
                     if (line.trim().isEmpty()) continue;
                     rows.add(line.split(",", -1));
                 }

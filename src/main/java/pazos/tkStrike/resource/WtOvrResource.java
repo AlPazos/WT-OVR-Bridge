@@ -167,10 +167,10 @@ public class WtOvrResource {
 
             Match match = Match.findById(matchId);
             if (match != null && attrs != null) {
-                Integer bluePoints    = attrs.getScore()     != null ? attrs.getScore().getHome()     : null;
-                Integer redPoints     = attrs.getScore()     != null ? attrs.getScore().getAway()     : null;
+                Integer bluePoints = attrs.getScore() != null ? attrs.getScore().getHome() : null;
+                Integer redPoints = attrs.getScore() != null ? attrs.getScore().getAway() : null;
                 Integer bluePenalties = attrs.getPenalties() != null ? attrs.getPenalties().getHome() : null;
-                Integer redPenalties  = attrs.getPenalties() != null ? attrs.getPenalties().getAway() : null;
+                Integer redPenalties = attrs.getPenalties() != null ? attrs.getPenalties().getAway() : null;
                 new MatchEvent(match, attrs.getRound(), null, actionType,
                         bluePoints, bluePenalties, redPoints, redPenalties).persist();
             }

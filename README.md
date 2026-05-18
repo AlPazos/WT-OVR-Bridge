@@ -103,6 +103,69 @@ java -jar target/quarkus-app/quarkus-run.jar
 
 ---
 
+## Installation (database bootstrap)
+
+This project expects a MySQL-compatible database available at jdbc:mysql://localhost:3306/tkstrike.
+You can create the database and user manually (see below) or use the provided helper script `install.sh`.
+
+Note: `install.sh` tries to install MySQL/MariaDB using the host package manager and requires sudo/administrator privileges. It supports common Linux package managers (apt, dnf, yum, apk, pacman) and Homebrew on macOS. On Windows use Docker Desktop, WSL or follow the manual steps below.
+
+Quick automatic bootstrap (Linux / macOS with sudo):
+
+```bash
+chmod +x install.sh
+sudo ./install.sh
+# This will attempt to install a server (if missing) and create the database/user:
+#   database: tkstrike
+#   user:     prueba
+#   password: prueba
+```
+
+If `install.sh` cannot install the server (no supported package manager, or missing privileges), run the SQL manually as a MySQL root user:
+
+```sql
+CREATE DATABASE IF NOT EXISTS `tkstrike` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'prueba'@'localhost' IDENTIFIED BY 'prueba';
+GRANT ALL PRIVILEGES ON `tkstrike`.* TO 'prueba'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+Windows note
+- On Windows it's recommended to use Docker Desktop or WSL. A PowerShell helper script is not included by default; you can run the SQL using the MySQL command-line client or MySQL Workbench after installing MySQL.
+
+Recommended (portable) alternative: Docker Compose
+
+If you prefer not to install the server on the host, use Docker Compose to run MySQL locally:
+
+```yaml
+version: "3.8"
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: tkstrike
+      MYSQL_USER: prueba
+      MYSQL_PASSWORD: prueba
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+volumes:
+  db_data:
+```
+
+Start it with:
+
+```bash
+docker compose up -d
+```
+
+After the DB is ready, start the app as described in the "Running" section above.
+
+
 ## Contributing
 
 Pull requests are welcome. Before opening one:
