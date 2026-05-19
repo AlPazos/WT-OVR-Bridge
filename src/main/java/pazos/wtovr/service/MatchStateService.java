@@ -43,7 +43,7 @@ public class MatchStateService {
         }
     }
 
-    public List<MatchConfigurationDto> getAllCombates(String ring, String status) {
+    public List<MatchConfigurationDto> getAllMatches(String ring, String status) {
         try {
             int mat = Integer.parseInt(ring);
             List<Match> matches = status != null
@@ -52,6 +52,16 @@ public class MatchStateService {
             return matches.stream().map(this::convertMatchToDto).collect(Collectors.toList());
         } catch (NumberFormatException e) {
             log.warn("Pista inválida: {}", ring);
+            return List.of();
+        }
+    }
+
+    public List<MatchConfigurationDto> getIndistinctMatches() {
+        try {
+            List<Match> matches = Match.findAll().list();
+            return matches.stream().map(this::convertMatchToDto).collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Error al obtener combates indistintos", e);
             return List.of();
         }
     }

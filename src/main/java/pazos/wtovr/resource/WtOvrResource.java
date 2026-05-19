@@ -16,6 +16,7 @@ import pazos.wtovr.model.MatchConfigurationDto;
 import pazos.wtovr.model.WtOvrActionDto;
 import pazos.wtovr.service.MatchStateService;
 import pazos.wtovr.service.TournamentService;
+import pazos.wtovr.websocket.ScoreboardBroadcaster;
 
 import java.util.List;
 
@@ -48,6 +49,9 @@ public class WtOvrResource {
     @Inject
     TournamentService tournamentService;
 
+    @Inject
+    ScoreboardBroadcaster broadcaster;
+
     // ── /status ──────────────────────────────────────────────────────────────
     @GET
     @Path("/status")
@@ -68,7 +72,7 @@ public class WtOvrResource {
         log.info("WT OVR GET /matches — mat={}", mat);
         String ring = mat != null ? String.valueOf(mat) : "1";
 
-        List<MatchConfigurationDto> dtos = matchStateService.getAllCombates(ring, status);
+        List<MatchConfigurationDto> dtos = matchStateService.getAllMatches(ring, status);
 
         if (dtos.isEmpty()) {
             return Response.ok("{\"data\":[],\"included\":[]}").type(JSONAPI).build();
@@ -180,6 +184,9 @@ public class WtOvrResource {
                     new MatchEvent(match, attrs.getRound(), null, action.name(),
                             bluePoints, bluePenalties, redPoints, redPenalties).persist();
                 }
+            }
+            if (attrs != null && match != null) {
+                broadcaster.broadcast(String.valueOf(match.mat), buildLivePayload(match, action, attrs));
             }
         } catch (Exception e) {
             log.warn("WT OVR action parse error: {}", e.getMessage());
@@ -656,5 +663,35 @@ public class WtOvrResource {
 
     private String s(String v) {
         return v != null ? v : "";
+    }
+
+    private String buildLivePayload(Match match, WtOvrActionDto.Action action, WtOvrActionDto.AttributesDto attrs) {
+        ObjectNode root = mapper.createObjectNode();
+        root.put("matchNumber", s(match.matchNumber));
+        root.put("action", action.name());
+        root.put("round", attrs.getRound() != null ? attrs.getRound() : 1);
+        root.put("roundTime", s(attrs.getRoundTime()));
+
+        ObjectNode score = mapper.createObjectNode();
+        score.put("home", attrs.getScore() != null && attrs.getScore().getHome() != null ? attrs.getScore().getHome() : 0);
+        score.put("away", attrs.getScore() != null && attrs.getScore().getAway() != null ? attrs.getScore().getAway() : 0);
+        root.set("score", score);
+
+        ObjectNode penalties = mapper.createObjectNode();
+        penalties.put("home", attrs.getPenalties() != null && attrs.getPenalties().getHome() != null ? attrs.getPenalties().getHome() : 0);
+        penalties.put("away", attrs.getPenalties() != null && attrs.getPenalties().getAway() != null ? attrs.getPenalties().getAway() : 0);
+        root.set("penalties", penalties);
+
+        ObjectNode home = mapper.createObjectNode();
+        home.put("name", match.blueAthlete != null ? s(match.blueAthlete.scoreboardName) : "");
+        home.put("country", match.blueAthlete != null ? s(match.blueAthlete.flagAbbreviation) : "");
+        root.set("home", home);
+
+        ObjectNode away = mapper.createObjectNode();
+        away.put("name", match.redAthlete != null ? s(match.redAthlete.scoreboardName) : "");
+        away.put("country", match.redAthlete != null ? s(match.redAthlete.flagAbbreviation) : "");
+        root.set("away", away);
+
+        return root.toString();
     }
 }

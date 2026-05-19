@@ -26,12 +26,12 @@ WtOvrResource  ──► MatchStateService  ──► MySQL
 
 ## Data model
 
-| Table | PK | Description |
-|---|---|---|
-| `categories` | autoincrement | Competition rules (rounds, times, thresholds) |
-| `athletes` | `ovrInternalId` (String) | Competitors |
-| `matches` | `matchNumber` (String) | Bracket — QF/SF/F per mat |
-| `match_events` | autoincrement | Every scoring event during a match |
+| Table          | PK                       | Description                                   |
+|----------------|--------------------------|-----------------------------------------------|
+| `categories`   | autoincrement            | Competition rules (rounds, times, thresholds) |
+| `athletes`     | `ovrInternalId` (String) | Competitors                                   |
+| `matches`      | `matchNumber` (String)   | Bracket — QF/SF/F per mat                     |
+| `match_events` | autoincrement            | Every scoring event during a match            |
 
 Match numbers follow the pattern `<mat><sequence>`: `101`, `102`… for mat 1, `201`, `202`… for mat 2. The `nextMatchNumber` and `nextMatchColor` columns encode the bracket advancement path.
 
@@ -56,11 +56,11 @@ quarkus.hibernate-orm.schema-management.strategy=update
 
 Three CSV files under `src/main/resources/` define the tournament:
 
-| File | Content |
-|---|---|
-| `categories.csv` | Category rules |
-| `athletes.csv` | All athletes |
-| `matches.csv` | Full bracket with athlete assignments for QF; SF/F left empty |
+| File             | Content                                                       |
+|------------------|---------------------------------------------------------------|
+| `categories.csv` | Category rules                                                |
+| `athletes.csv`   | All athletes                                                  |
+| `matches.csv`    | Full bracket with athlete assignments for QF; SF/F left empty |
 
 On startup, if the database is empty, the CSVs are loaded automatically.
 
@@ -70,23 +70,23 @@ On startup, if the database is empty, the CSVs are loaded automatically.
 
 ### WT OVR protocol (consumed by WtOvr)
 
-| Method | Path | Description |
-|---|---|---|
-| GET | `/matches` | All matches (filterable by `?filter[mat]=`) |
-| GET | `/matches/{id}` | Single match |
-| GET | `/competitors/{id}` | Competitor |
-| GET | `/participants/{id}` | Participant |
-| GET | `/events/{id}` | Event |
-| GET | `/match-configurations/{id}` | Match configuration |
-| POST | `/matches/{id}/actions` | Match action |
-| POST | `/matches/{id}/results` | Match result |
+| Method | Path                         | Description                                 |
+|--------|------------------------------|---------------------------------------------|
+| GET    | `/matches`                   | All matches (filterable by `?filter[mat]=`) |
+| GET    | `/matches/{id}`              | Single match                                |
+| GET    | `/competitors/{id}`          | Competitor                                  |
+| GET    | `/participants/{id}`         | Participant                                 |
+| GET    | `/events/{id}`               | Event                                       |
+| GET    | `/match-configurations/{id}` | Match configuration                         |
+| POST   | `/matches/{id}/actions`      | Match action                                |
+| POST   | `/matches/{id}/results`      | Match result                                |
 
 ### Admin
 
-| Method | Path | Description |
-|---|---|---|
-| DELETE | `/admin/reset` | Wipe the database |
-| GET | `/admin/reload` | Wipe and reload from CSVs |
+| Method | Path            | Description               |
+|--------|-----------------|---------------------------|
+| DELETE | `/admin/reset`  | Wipe the database         |
+| GET    | `/admin/reload` | Wipe and reload from CSVs |
 
 ---
 
@@ -100,6 +100,7 @@ On startup, if the database is empty, the CSVs are loaded automatically.
 ./mvnw package
 java -jar target/quarkus-app/quarkus-run.jar
 ```
+
 (
 SELECT DISTINCT `Db`
 FROM `mysql`.`tables_priv` WHERE `User` = 'prueba' AND `Host` = '%') UNION (
