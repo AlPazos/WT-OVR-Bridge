@@ -1,5 +1,5 @@
 name,gender,subCategory,bodyLevel,headLevel,rounds,roundMinutes,roundSeconds,kyeShiMinutes,kyeShiSeconds,goldenPoint,goldenMinutes,goldenSeconds,maxDiff,maxGamJeoms
-SENIOR -68kg,MALE,-68,26,5,3,2,0,1,0,false,1,0,12,10
-SENIOR -57kg,FEMALE,-57,26,5,3,2,0,1,0,false,1,0,12,10
-SENIOR -80kg,MALE,-80,26,5,3,2,0,1,0,false,1,0,12,10
-SENIOR -49kg,FEMALE,-49,26,5,3,2,0,1,0,false,1,0,12,10
+SENIOR -68kg,MALE,P4,26,5,3,2,0,1,0,false,1,0,12,5
+SENIOR -57kg,FEMALE,P4,26,5,3,2,0,1,0,false,1,0,12,5
+SENIOR -80kg,MALE,P6,26,5,3,2,0,1,0,false,1,0,12,5
+SENIOR -49kg,FEMALE,P2,26,5,3,2,0,1,0,false,1,0,12,5
