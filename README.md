@@ -2,7 +2,7 @@
 
 > **Work in progress** — the project is under active development. APIs and data structures may change without notice.
 
-Bridge between the WtOvr taekwondo competition software and any external system. WtOvr speaks a proprietary WT OVR protocol — this service translates it into a clean REST API backed by a MySQL database, and manages the tournament bracket automatically as results come in.
+Bridge between the WtOvr taekwondo competition software and any external system. WtOvr speaks a proprietary WT OVR protocol — this service translates it into a clean REST API backed by a MySQL database, manages the tournament bracket automatically as results come in, and broadcasts live match state to connected clients via WebSocket.
 
 The functionalities for receiving and sending data to an external REST API are not yet implemented; the data is loaded from CSV files in the resources folder. This means the system works fully offline — if the external API is unavailable, the local CSV data is used instead and the application continues to operate normally.
 
@@ -17,9 +17,13 @@ WtOvr app
     │
     ├── GET  /matches, /matches/{id}, /competitors, /participants ...
     ├── POST /matches/{id}/actions  ──► MatchEvent persisted
+    │                               └─► ScoreboardBroadcaster ──► WebSocket clients (per mat)
     └── POST /matches/{id}/results  ──► TournamentService (advances winner to next match)
 
 WtOvrResource  ──► MatchStateService  ──► MySQL
+
+WebSocket clients connect to ws://host/ws/mats/{mat} and receive live updates
+for every action that occurs on that mat, regardless of which match is active.
 ```
 
 ---
@@ -81,6 +85,29 @@ On startup, if the database is empty, the CSVs are loaded automatically.
 | POST   | `/matches/{id}/actions`      | Match action                                |
 | POST   | `/matches/{id}/results`      | Match result                                |
 
+### WebSocket (real-time scoreboard)
+
+| Path              | Description                                                    |
+|-------------------|----------------------------------------------------------------|
+| `/ws/mats/{mat}`  | Live match state for a mat. Receives a JSON message on every action from WtOvr (clock tick, score, penalty, round start/end, etc.) |
+
+**Payload example:**
+
+```json
+{
+  "matchNumber": "M001",
+  "action": "SCORE_HOME_KICK",
+  "round": 2,
+  "roundTime": "01:23",
+  "score": { "home": 5, "away": 3 },
+  "penalties": { "home": 1, "away": 0 },
+  "home": { "name": "KIM Cheol", "country": "KOR" },
+  "away": { "name": "GARCIA Luis", "country": "ESP" }
+}
+```
+
+Multiple clients can connect to the same mat simultaneously. When a match ends and a new one starts on the same mat, clients continue receiving updates without reconnecting.
+
 ### Admin
 
 | Method | Path            | Description               |
@@ -101,13 +128,6 @@ On startup, if the database is empty, the CSVs are loaded automatically.
 java -jar target/quarkus-app/quarkus-run.jar
 ```
 
-(
-SELECT DISTINCT `Db`
-FROM `mysql`.`tables_priv` WHERE `User` = 'prueba' AND `Host` = '%') UNION (
-SELECT DISTINCT `Db`
-FROM `mysql`.`columns_priv` WHERE `User` = 'prueba' AND `Host` = '%') UNION (
-SELECT DISTINCT `Db`
-FROM `mysql`.`procs_priv` WHERE `User` = 'prueba' AND `Host` = '%') ORDER BY `Db` ASC
 ---
 
 ## Installation (database bootstrap)
