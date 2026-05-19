@@ -1,8 +1,8 @@
-# TkStrike Bridge
+# WtOvr Bridge
 
 > **Work in progress** — the project is under active development. APIs and data structures may change without notice.
 
-Bridge between the TkStrike taekwondo competition software and any external system. TkStrike speaks a proprietary WT OVR protocol — this service translates it into a clean REST API backed by a MySQL database, and manages the tournament bracket automatically as results come in.
+Bridge between the WtOvr taekwondo competition software and any external system. WtOvr speaks a proprietary WT OVR protocol — this service translates it into a clean REST API backed by a MySQL database, and manages the tournament bracket automatically as results come in.
 
 The functionalities for receiving and sending data to an external REST API are not yet implemented; the data is loaded from CSV files in the resources folder. This means the system works fully offline — if the external API is unavailable, the local CSV data is used instead and the application continues to operate normally.
 
@@ -13,7 +13,7 @@ Built with Quarkus 3, Hibernate ORM Panache and Jakarta REST.
 ## Architecture
 
 ```
-TkStrike app
+WtOvr app
     │
     ├── GET  /matches, /matches/{id}, /competitors, /participants ...
     ├── POST /matches/{id}/actions  ──► MatchEvent persisted
@@ -43,7 +43,7 @@ Match numbers follow the pattern `<mat><sequence>`: `101`, `102`… for mat 1, `
 
 ```properties
 quarkus.datasource.db-kind=mysql
-quarkus.datasource.jdbc.url=jdbc:mysql://localhost:3306/tkstrike
+quarkus.datasource.jdbc.url=jdbc:mysql://localhost:3306/wtovr
 quarkus.datasource.username=prueba
 quarkus.datasource.password=prueba
 quarkus.datasource.db-version=5.5.5
@@ -68,7 +68,7 @@ On startup, if the database is empty, the CSVs are loaded automatically.
 
 ## API endpoints
 
-### WT OVR protocol (consumed by TkStrike)
+### WT OVR protocol (consumed by WtOvr)
 
 | Method | Path | Description |
 |---|---|---|
@@ -100,12 +100,18 @@ On startup, if the database is empty, the CSVs are loaded automatically.
 ./mvnw package
 java -jar target/quarkus-app/quarkus-run.jar
 ```
-
+(
+SELECT DISTINCT `Db`
+FROM `mysql`.`tables_priv` WHERE `User` = 'prueba' AND `Host` = '%') UNION (
+SELECT DISTINCT `Db`
+FROM `mysql`.`columns_priv` WHERE `User` = 'prueba' AND `Host` = '%') UNION (
+SELECT DISTINCT `Db`
+FROM `mysql`.`procs_priv` WHERE `User` = 'prueba' AND `Host` = '%') ORDER BY `Db` ASC
 ---
 
 ## Installation (database bootstrap)
 
-This project expects a MySQL-compatible database available at jdbc:mysql://localhost:3306/tkstrike.
+This project expects a MySQL-compatible database available at jdbc:mysql://localhost:3306/wtovr.
 You can create the database and user manually (see below) or use the provided helper script `install.sh`.
 
 Note: `install.sh` tries to install MySQL/MariaDB using the host package manager and requires sudo/administrator privileges. It supports common Linux package managers (apt, dnf, yum, apk, pacman) and Homebrew on macOS. On Windows use Docker Desktop, WSL or follow the manual steps below.
@@ -116,7 +122,7 @@ Quick automatic bootstrap (Linux / macOS with sudo):
 chmod +x install.sh
 sudo ./install.sh
 # This will attempt to install a server (if missing) and create the database/user:
-#   database: tkstrike
+#   database: wtovr
 #   user:     prueba
 #   password: prueba
 ```
@@ -124,9 +130,9 @@ sudo ./install.sh
 If `install.sh` cannot install the server (no supported package manager, or missing privileges), run the SQL manually as a MySQL root user:
 
 ```sql
-CREATE DATABASE IF NOT EXISTS `tkstrike` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS `wtovr` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS 'prueba'@'localhost' IDENTIFIED BY 'prueba';
-GRANT ALL PRIVILEGES ON `tkstrike`.* TO 'prueba'@'localhost';
+GRANT ALL PRIVILEGES ON `wtovr`.* TO 'prueba'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
@@ -145,7 +151,7 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: rootpass
-      MYSQL_DATABASE: tkstrike
+      MYSQL_DATABASE: wtovr
       MYSQL_USER: prueba
       MYSQL_PASSWORD: prueba
     ports:
@@ -190,7 +196,7 @@ git clone https://github.com/Pazex04/TkStrike-Bridge.git
 cd TkStrike-Bridge
 
 # 2. Create the database
-mysql -u root -p -e "CREATE DATABASE tkstrike; CREATE USER 'prueba'@'localhost' IDENTIFIED BY 'prueba'; GRANT ALL ON tkstrike.* TO 'prueba'@'localhost';"
+mysql -u root -p -e "CREATE DATABASE wtovr; CREATE USER 'prueba'@'localhost' IDENTIFIED BY 'prueba'; GRANT ALL ON wtovr.* TO 'prueba'@'localhost';"
 
 # 3. Run in dev mode (tables and data are created automatically on first start)
 ./mvnw quarkus:dev

@@ -5,7 +5,7 @@ set -euo pipefail
 # Designed for Unix-like environments (Debian/Ubuntu, Fedora/RHEL, CentOS, Alpine, Arch, macOS).
 # DOES NOT guarantee installation in all environments (requires sudo/root and appropriate repositories).
 
-DB_NAME="tkstrike"
+DB_NAME="wtovr"
 DB_USER="prueba"
 DB_PASS="prueba"
 
