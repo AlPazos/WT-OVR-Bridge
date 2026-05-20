@@ -4,7 +4,7 @@
 
 Bridge between the WtOvr taekwondo competition software and any external system. WtOvr speaks a proprietary WT OVR protocol — this service translates it into a clean REST API backed by a MySQL database, manages the tournament bracket automatically as results come in, and broadcasts live match state to connected clients via WebSocket.
 
-The functionalities for receiving and sending data to an external REST API are not yet implemented; the data is loaded from CSV files in the resources folder. This means the system works fully offline — if the external API is unavailable, the local CSV data is used instead and the application continues to operate normally.
+The current data-loading mechanism (CSV files in `src/main/resources/`) is a **temporary example** to ease development. The planned flow is for the manager to upload a tournament PDF directly via a `/manager/tournament` endpoint; the service will parse the bracket and populate the database without any manual CSV generation. The `tools/gesbate2csv.py` script is an intermediate helper that converts Gesbate-exported PDFs into those CSVs until the endpoint is ready.
 
 Built with Quarkus 3, Hibernate ORM Panache and Jakarta REST.
 
@@ -56,7 +56,7 @@ quarkus.hibernate-orm.schema-management.strategy=update
 
 ---
 
-## Initial data
+## Initial data (temporary, example only)
 
 Three CSV files under `src/main/resources/` define the tournament:
 
@@ -67,6 +67,19 @@ Three CSV files under `src/main/resources/` define the tournament:
 | `matches.csv`    | Full bracket with athlete assignments for QF; SF/F left empty |
 
 On startup, if the database is empty, the CSVs are loaded automatically.
+
+> **This is a placeholder mechanism.** Once `POST /manager/tournament` is implemented, the manager will upload the tournament PDF directly and the service will generate the full bracket — categories, athletes and matches — without any manual CSV step. The sample PDF `GALEGO SUB-21.pdf` and the `tools/gesbate2csv.py` script are kept as reference until then.
+
+### gesbate2csv.py
+
+Converts a Gesbate-exported tournament PDF into the three CSVs expected by the application. Run it pointing at one or more PDFs and copy the output to `src/main/resources/`:
+
+```bash
+python tools/gesbate2csv.py tournament.pdf
+# copies athletes.csv, categories.csv and matches.csv to src/main/resources/
+```
+
+Match numbers are generated as `{mat}{seq:02d}` (e.g. `101`, `102` for mat 1, `201` for mat 2). WT weight codes (P1–P10) are resolved automatically from the weight label for Sub-21, Cadete and Senior age groups.
 
 ---
 
@@ -107,6 +120,19 @@ On startup, if the database is empty, the CSVs are loaded automatically.
 ```
 
 Multiple clients can connect to the same mat simultaneously. When a match ends and a new one starts on the same mat, clients continue receiving updates without reconnecting.
+
+### Manager
+
+| Method | Path                              | Description                                              |
+|--------|-----------------------------------|----------------------------------------------------------|
+| GET    | `/manager/matches`                | All matches (indistinct)                                 |
+| GET    | `/manager/matches/{ring}`         | Matches available for a given mat                        |
+| GET    | `/manager/athletes`               | All athletes                                             |
+| GET    | `/manager/categories`             | All categories                                           |
+| POST   | `/manager/newCategory`            | Create a category                                        |
+| POST   | `/manager/matches`                | Create a match                                           |
+| POST   | `/manager/matches/{id}/winner`    | Manually declare winner and advance bracket              |
+| POST   | `/manager/tournament` *(planned)* | Upload a tournament PDF — generates the full bracket     |
 
 ### Admin
 
