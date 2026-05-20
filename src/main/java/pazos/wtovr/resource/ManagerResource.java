@@ -52,6 +52,15 @@ public class ManagerResource {
         List<Category> list = Category.findAll().list();
         return Response.ok(list).build();
     }
+    @GET
+    @Path("athletes/category/{id}")
+    public Response getAthletesByCategory(@PathParam("id") Long categoryId) {
+        if (categoryId == null) {
+            return Response.status(Response.Status.NOT_FOUND).entity("Category not found").build();
+        }
+        List<Athlete> athletes = Athlete.findByCategory(categoryId);
+        return Response.ok(athletes).build();
+    }
 
 
     @POST

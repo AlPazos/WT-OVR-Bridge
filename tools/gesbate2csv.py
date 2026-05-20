@@ -28,11 +28,11 @@ FLAG = "ESP"
 WT_WEIGHT_CODES: dict[tuple, dict[str, str]] = {
     ('MALE', 'SUB-21'): {
         '-54 kg': 'P1', '-58 kg': 'P2', '-63 kg': 'P3', '-68 kg': 'P4',
-        '-74 kg': 'P5', '-80 kg': 'P6', '-87 kg': 'P7', '+87 kg': 'P8',
+        '-74 kg': 'P5', '-80 kg': 'P6', '-87 kg': 'P7', '+87 kg': 'P10',
     },
     ('FEMALE', 'SUB-21'): {
         '-46 kg': 'P1', '-49 kg': 'P2', '-53 kg': 'P3', '-57 kg': 'P4',
-        '-62 kg': 'P5', '-67 kg': 'P6', '-73 kg': 'P7', '+73 kg': 'P8',
+        '-62 kg': 'P5', '-67 kg': 'P6', '-73 kg': 'P7', '+73 kg': 'P10',
     },
     ('MALE', 'CADETE'): {
         '-33 kg': 'P1', '-37 kg': 'P2', '-41 kg': 'P3', '-45 kg': 'P4',
@@ -46,11 +46,11 @@ WT_WEIGHT_CODES: dict[tuple, dict[str, str]] = {
     },
     ('MALE', 'SENIOR'): {
         '-54 kg': 'P1', '-58 kg': 'P2', '-63 kg': 'P3', '-68 kg': 'P4',
-        '-74 kg': 'P5', '-80 kg': 'P6', '-87 kg': 'P7', '+87 kg': 'P8',
+        '-74 kg': 'P5', '-80 kg': 'P6', '-87 kg': 'P7', '+87 kg': 'P10',
     },
     ('FEMALE', 'SENIOR'): {
         '-46 kg': 'P1', '-49 kg': 'P2', '-53 kg': 'P3', '-57 kg': 'P4',
-        '-62 kg': 'P5', '-67 kg': 'P6', '-73 kg': 'P7', '+73 kg': 'P8',
+        '-62 kg': 'P5', '-67 kg': 'P6', '-73 kg': 'P7', '+73 kg': 'P10',
     },
 }
 
@@ -159,9 +159,10 @@ def parse_pdf(text: str) -> list[dict]:
             continue
 
         m = RE_WEIGHT.match(line)
-        if m and block['weight_label'] is None:
-            block['weight_label'] = m.group(1) + ' kg'
-            continue
+        if m:
+            if block['weight_label'] is None:
+                block['weight_label'] = m.group(1) + ' kg'
+            continue  # always skip weight lines (repeated headers, etc.)
 
         m = RE_ATHLETE.match(line)
         if m:
@@ -231,15 +232,51 @@ def _round_phase(total_rounds: int, round_idx: int) -> str:
 
 
 def _build_slots(athletes: list[dict], bracket_size: int) -> list:
-    """Place athletes into bracket slots. Returns list of (athlete_dict | None)."""
+    """Place athletes into bracket slots avoiding same-club conflicts within quarters."""
     slots = [None] * bracket_size
     positions = _seeding_positions(bracket_size)
     seeded = sorted([a for a in athletes if a['seed'] > 0], key=lambda a: a['seed'])
     unseeded = [a for a in athletes if a['seed'] == 0]
-    ordered = seeded + unseeded
-    for i, ath in enumerate(ordered):
+
+    # Place seeded athletes first
+    for i, ath in enumerate(seeded):
         if i < len(positions):
             slots[positions[i]] = ath
+
+    # Map quarter -> set of clubs already placed (seeded athletes)
+    quarter_size = max(bracket_size // 4, 1)
+    seeded_clubs_by_quarter: dict[int, set] = {}
+    for slot_idx, ath in enumerate(slots):
+        if ath is not None:
+            club = ath.get('club', '').strip()
+            if club:
+                q = slot_idx // quarter_size
+                seeded_clubs_by_quarter.setdefault(q, set()).add(club)
+
+    # Target positions for unseeded athletes
+    target_positions = [positions[i] for i in range(len(seeded), len(positions))
+                        if i < len(positions) and positions[i] < bracket_size]
+
+    def has_conflict(pos: int, club: str) -> bool:
+        if not club:
+            return False
+        return club in seeded_clubs_by_quarter.get(pos // quarter_size, set())
+
+    # Sort unseeded: most-constrained (most conflicts) first so they get first pick
+    remaining = list(unseeded)
+    remaining.sort(
+        key=lambda a: sum(has_conflict(p, a.get('club', '').strip()) for p in target_positions),
+        reverse=True,
+    )
+
+    avail = list(target_positions)
+    for ath in remaining:
+        club = ath.get('club', '').strip()
+        # Prefer a slot with no club conflict; fall back to first available
+        chosen = next((p for p in avail if not has_conflict(p, club)), avail[0])
+        avail.remove(chosen)
+        slots[chosen] = ath
+
     return slots
 
 
@@ -359,9 +396,8 @@ def _match_prefix(block: dict) -> str:
 
 
 def _scoreboard_name(a: dict) -> str:
-    """Generate short scoreboard name: FAMILY, G."""
     initial = a['given'][0].upper() if a['given'] else '?'
-    return f"{a['family']}, {initial}."
+    return f"{a['family']} {initial}."
 
 
 def ask_weight(block: dict, known_weights: dict) -> str:
@@ -384,8 +420,11 @@ def ask_weight(block: dict, known_weights: dict) -> str:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    if len(sys.argv) > 1:
-        pdf_files = [Path(p) for p in sys.argv[1:]]
+    dump_raw = '--dump' in sys.argv
+    args = [a for a in sys.argv[1:] if a != '--dump']
+
+    if args:
+        pdf_files = [Path(p) for p in args]
     else:
         dl = Path.home() / 'Descargas'
         pdf_files = sorted(dl.glob('*.pdf'))
@@ -398,11 +437,25 @@ def main():
 
     all_blocks: list[dict] = []
     for pdf in pdf_files:
-        print(f"  → {pdf.name}")
+        print(f"  -> {pdf.name}")
         text = extract_text(pdf)
+        if dump_raw:
+            print("=== TEXTO RAW DEL PDF ===")
+            print(text)
+            print("=========================")
+            sys.exit(0)
         blocks = parse_pdf(text)
         print(f"     {len(blocks)} categorías encontradas")
         all_blocks.extend(blocks)
+
+    print("\n=== Categorias y atletas detectados ===")
+    for block in all_blocks:
+        gender_label = 'M' if block['gender'] == 'MALE' else 'F'
+        print(f"  [{gender_label}] {block['age_group']} {block['weight_code']} (tapiz {block['mat']}, {len(block['athletes'])} atletas)")
+        for a in block['athletes']:
+            seed_str = f" cs{a['seed']}" if a['seed'] else ""
+            print(f"    * {a['family']}, {a['given']}{seed_str}")
+    print("=======================================\n")
 
     if not all_blocks:
         print("No se encontraron categorías en los PDFs.", file=sys.stderr)
@@ -412,12 +465,22 @@ def main():
     print("\nRevisando pesos de categorías...")
     known_weights: dict = {}
     for block in all_blocks:
-        if block['weight_label'] is None:
-            block['weight_label'] = ask_weight(block, known_weights)
         wt_map = WT_WEIGHT_CODES.get((block['gender'], block['age_group']), {})
-        wt_code = wt_map.get(block['weight_label'])
-        if wt_code:
-            block['weight_code'] = wt_code
+        # Primary: derive weight label from the P-code in the PDF (authoritative)
+        p_to_weight = {v: k for k, v in wt_map.items()}
+        resolved = p_to_weight.get(block['weight_code'])
+        if resolved:
+            block['weight_label'] = resolved
+        else:
+            # Fallback: ask user if weight label also missing
+            if block['weight_label'] is None:
+                block['weight_label'] = ask_weight(block, known_weights)
+            gender_label = 'MASCULINO' if block['gender'] == 'MALE' else 'FEMENINO'
+            print(
+                f"  [!] P-code no reconocido: [{gender_label}] {block['age_group']} "
+                f"{block['weight_code']} -> usando peso del PDF: {block['weight_label']}",
+                file=sys.stderr,
+            )
 
     # ── Build athletes ─────────────────────────────────────────────────────────
     athletes_seen: dict = {}  # ath_key → row dict
@@ -436,7 +499,6 @@ def main():
             'givenName': a['given'],
             'familyName': a['family'],
             'flagAbbreviation': FLAG,
-            'rank': 0,
             'seed': a['seed'],
             'gender': a.get('gender', 'MALE'),
         }
@@ -472,6 +534,20 @@ def main():
     all_matches = []
 
     for block in all_blocks:
+        n_athletes = len(block['athletes'])
+        cat_label = f"[{block['gender']}] {block['age_group']} {block['weight_label'] or block['weight_code']}"
+        if n_athletes == 0:
+            print(f"  [!] Categoría sin atletas, se omite: {cat_label}", file=sys.stderr)
+            continue
+        if n_athletes == 1:
+            ath = block['athletes'][0]
+            print(
+                f"  [!] Categoría con 1 solo atleta, se omite: {cat_label} "
+                f"-> {ath['family']}, {ath['given']}",
+                file=sys.stderr,
+            )
+            continue
+
         gender = block['gender']
         for a in block['athletes']:
             a['gender'] = gender
@@ -489,9 +565,9 @@ def main():
     _write_matches(_renumber_by_mat(all_matches))
 
     print(f"\nListo:")
-    print(f"  athletes.csv   → {len(athletes_seen)} atletas")
-    print(f"  categories.csv → {len(categories_seen)} categorías")
-    print(f"  matches.csv    → {len(all_matches)} combates")
+    print(f"  athletes.csv   -> {len(athletes_seen)} atletas")
+    print(f"  categories.csv -> {len(categories_seen)} categorias")
+    print(f"  matches.csv    -> {len(all_matches)} combates")
     print("\nCopia los CSV a src/main/resources/ y llama a GET /admin/reload")
 
 
@@ -515,8 +591,8 @@ def _renumber_by_mat(matches: list[dict]) -> list[dict]:
 
 def _write_athletes(rows: list[dict]):
     headers = ['ovrInternalId', 'scoreboardName', 'givenName', 'familyName',
-               'flagAbbreviation', 'rank', 'seed', 'gender']
-    _write_csv('athletes.csv', headers,
+               'flagAbbreviation', 'seed', 'gender']
+    _write_csv('../src/main/resources/athletes.csv', headers,
                [[r[h] for h in headers] for r in rows])
 
 
@@ -525,7 +601,7 @@ def _write_categories(rows: list[dict]):
                'rounds', 'roundMinutes', 'roundSeconds',
                'kyeShiMinutes', 'kyeShiSeconds', 'goldenPoint',
                'goldenMinutes', 'goldenSeconds', 'maxDiff', 'maxGamJeoms']
-    _write_csv('categories.csv', headers,
+    _write_csv('../src/main/resources/categories.csv', headers,
                [[r[h] for h in headers] for r in rows])
 
 
@@ -533,7 +609,7 @@ def _write_matches(rows: list[dict]):
     headers = ['matchNumber', 'mat', 'phase', 'categoryName', 'categoryGender',
                'categorySubCategory', 'blueOvrId', 'redOvrId',
                'videoQuota', 'matchVictoryCriteria', 'nextMatchNumber', 'nextMatchColor']
-    _write_csv('matches.csv', headers,
+    _write_csv('../src/main/resources/matches.csv', headers,
                [[r[h] for h in headers] for r in rows])
 
 

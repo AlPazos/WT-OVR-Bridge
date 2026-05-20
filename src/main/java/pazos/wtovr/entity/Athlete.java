@@ -7,6 +7,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "athletes", indexes = {
@@ -50,6 +51,14 @@ public class Athlete extends PanacheEntityBase {
         this.ovrInternalId = ovrInternalId;
         this.scoreboardName = scoreboardName;
     }
+    public static List<Athlete> findByCategory(Long categoryId) {
+        return find(
+                "id IN (SELECT m.blueAthlete.ovrInternalId FROM Match m WHERE m.category.id = ?1 AND m.blueAthlete IS NOT NULL) " +
+                        "OR id IN (SELECT m.redAthlete.ovrInternalId FROM Match m WHERE m.category.id = ?1 AND m.redAthlete IS NOT NULL)",
+                categoryId
+        ).list();
+    }
+
 
     public static Athlete findByWfId(String wfId) {
         return find("wfId", wfId).firstResult();

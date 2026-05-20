@@ -56,9 +56,9 @@ public class CsvMatchLoader {
             a.givenName = f[2].trim();
             a.familyName = f[3].trim();
             a.flagAbbreviation = f[4].trim();
-            a.rank = Integer.parseInt(f[5].trim());
-            a.seed = Integer.parseInt(f[6].trim());
-            a.gender = f[7].trim();
+            a.rank = 0;
+            a.seed = Integer.parseInt(f[5].trim());
+            a.gender = f[6].trim();
             a.wfId = ovrId;
             a.persist();
             count++;
