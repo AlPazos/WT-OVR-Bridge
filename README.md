@@ -219,6 +219,16 @@ docker compose up -d
 After the DB is ready, start the app as described in the "Running" section above.
 
 
+    ## License
+
+Copyright © 2026 Alex Pazos Amoedo — [pazex04@gmail.com](mailto:pazex04@gmail.com)
+
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+
+You are free to use, study, modify and distribute this software under the terms of the AGPL-3.0. Any modified version deployed over a network must also make its source code available under the same license. See the [`LICENSE`](LICENSE) file for the full text.
+
+---
+
 ## Contributing
 
 Pull requests are welcome. Before opening one:
