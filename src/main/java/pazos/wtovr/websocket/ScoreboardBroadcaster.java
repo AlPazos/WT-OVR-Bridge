@@ -16,11 +16,16 @@ public class ScoreboardBroadcaster {
     private static final Logger log = LoggerFactory.getLogger(ScoreboardBroadcaster.class);
 
     private final Map<String, Set<Session>> sessions = new ConcurrentHashMap<>();
+    private final Map<String, String> lastPayload = new ConcurrentHashMap<>();
 
     public void register(String matchId, Session session) {
         sessions.computeIfAbsent(matchId, k -> Collections.newSetFromMap(new ConcurrentHashMap<>()))
                 .add(session);
         log.info("WS connected — match={} session={}", matchId, session.getId());
+        String last = lastPayload.get(matchId);
+        if (last != null) {
+            session.getAsyncRemote().sendText(last);
+        }
     }
 
     public void unregister(String matchId, Session session) {
@@ -33,6 +38,7 @@ public class ScoreboardBroadcaster {
     }
 
     public void broadcast(String matchId, String payload) {
+        lastPayload.put(matchId, payload);
         Set<Session> set = sessions.getOrDefault(matchId, Collections.emptySet());
         for (Session s : set) {
             if (s.isOpen()) {

@@ -1,5 +1,6 @@
 package pazos.wtovr.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -25,16 +26,21 @@ public class Athlete extends PanacheEntityBase {
     @Column(length = 3)
     public String flagAbbreviation;
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public Integer rank;
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public Integer seed;
     public String gender;
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public String wfId;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public LocalDateTime createdAt;
 
     @UpdateTimestamp
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public LocalDateTime updatedAt;
 
     public Athlete() {

@@ -27,11 +27,17 @@ public class MatchConfigurationDto {
     private Integer maxAllowedGamJeoms;
     private Boolean wtCompetitionDataProtocol;
     private String matchVictoryCriteria; // "CONVENTIONAL" | "BESTOF3"
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private RefereeDto refereeCR;
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private RefereeDto refereeJ1;
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private RefereeDto refereeJ2;
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private RefereeDto refereeJ3;
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private RefereeDto refereeTA;
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private RefereeDto refereeRJ;
 
     // ── Main DTO getters/setters ──────────────────────────────────────────────
