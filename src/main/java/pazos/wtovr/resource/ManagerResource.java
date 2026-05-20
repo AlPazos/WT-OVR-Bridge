@@ -9,6 +9,7 @@ import pazos.wtovr.entity.Athlete;
 import pazos.wtovr.entity.Category;
 import pazos.wtovr.entity.Match;
 import pazos.wtovr.model.MatchConfigurationDto;
+import pazos.wtovr.model.ProvidedMatch;
 import pazos.wtovr.service.MatchStateService;
 import pazos.wtovr.service.TournamentService;
 
@@ -28,7 +29,6 @@ public class ManagerResource {
     public Response getMatches() {
         return Response.ok(matchStateService.getIndistinctMatches()).build();
     }
-
     @GET
     @Path("/matches/{ring}")
     @Produces(MediaType.APPLICATION_JSON)
@@ -55,7 +55,7 @@ public class ManagerResource {
 
 
     @POST
-    @Path("/categories")
+    @Path("/newCategory")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional

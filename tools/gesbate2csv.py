@@ -25,6 +25,35 @@ VIDEO_QUOTA = 1
 MATCH_VICTORY_CRITERIA = "BESTOF3"
 FLAG = "ESP"
 
+WT_WEIGHT_CODES: dict[tuple, dict[str, str]] = {
+    ('MALE', 'SUB-21'): {
+        '-54 kg': 'P1', '-58 kg': 'P2', '-63 kg': 'P3', '-68 kg': 'P4',
+        '-74 kg': 'P5', '-80 kg': 'P6', '-87 kg': 'P7', '+87 kg': 'P8',
+    },
+    ('FEMALE', 'SUB-21'): {
+        '-46 kg': 'P1', '-49 kg': 'P2', '-53 kg': 'P3', '-57 kg': 'P4',
+        '-62 kg': 'P5', '-67 kg': 'P6', '-73 kg': 'P7', '+73 kg': 'P8',
+    },
+    ('MALE', 'CADETE'): {
+        '-33 kg': 'P1', '-37 kg': 'P2', '-41 kg': 'P3', '-45 kg': 'P4',
+        '-49 kg': 'P5', '-53 kg': 'P6', '-57 kg': 'P7', '-61 kg': 'P8',
+        '-65 kg': 'P9', '+65 kg': 'P10',
+    },
+    ('FEMALE', 'CADETE'): {
+        '-29 kg': 'P1', '-33 kg': 'P2', '-37 kg': 'P3', '-41 kg': 'P4',
+        '-44 kg': 'P5', '-47 kg': 'P6', '-51 kg': 'P7', '-55 kg': 'P8',
+        '-59 kg': 'P9', '+59 kg': 'P10',
+    },
+    ('MALE', 'SENIOR'): {
+        '-54 kg': 'P1', '-58 kg': 'P2', '-63 kg': 'P3', '-68 kg': 'P4',
+        '-74 kg': 'P5', '-80 kg': 'P6', '-87 kg': 'P7', '+87 kg': 'P8',
+    },
+    ('FEMALE', 'SENIOR'): {
+        '-46 kg': 'P1', '-49 kg': 'P2', '-53 kg': 'P3', '-57 kg': 'P4',
+        '-62 kg': 'P5', '-67 kg': 'P6', '-73 kg': 'P7', '+73 kg': 'P8',
+    },
+}
+
 CATEGORY_DEFAULTS = dict(
     body_level=26, head_level=5,
     rounds=3, round_min=2, round_sec=0,
@@ -35,7 +64,7 @@ CATEGORY_DEFAULTS = dict(
 
 # ── Regex patterns ─────────────────────────────────────────────────────────────
 RE_CATEGORY = re.compile(
-    r'^(HOME|MULLER)\s+(SUB-\d+|CADETE|XUNIOR|SENIOR|JUNIOR)\s+(P\d+)\s*$',
+    r'(HOME|MULLER)\s+(SUB-\d+|CADETE|XUNIOR|SENIOR|JUNIOR)\s+(P\d+)\s*$',
     re.IGNORECASE,
 )
 RE_ATHLETE = re.compile(
@@ -95,17 +124,16 @@ def parse_pdf(text: str) -> list[dict]:
         if not line:
             continue
 
-        if RE_CHAMPIONSHIP.match(line):
-            championship = line
-            continue
-
-        m = RE_CATEGORY.match(line)
+        m = RE_CATEGORY.search(line)
         if m:
             if block is not None:
                 if pending:
                     block['athletes'].append(pending)
                     pending = None
                 blocks.append(block)
+            prefix = line[:m.start()].strip()
+            if prefix:
+                championship = prefix
             block = {
                 'championship': championship,
                 'gender': 'MALE' if m.group(1).upper() == 'HOME' else 'FEMALE',
@@ -116,6 +144,10 @@ def parse_pdf(text: str) -> list[dict]:
                 'athletes': [],
             }
             pending = None
+            continue
+
+        if RE_CHAMPIONSHIP.match(line):
+            championship = line
             continue
 
         if block is None:
@@ -376,12 +408,16 @@ def main():
         print("No se encontraron categorías en los PDFs.", file=sys.stderr)
         sys.exit(1)
 
-    # ── Ask for missing weights ────────────────────────────────────────────────
+    # ── Ask for missing weights and resolve WT P codes ───────────────────────
     print("\nRevisando pesos de categorías...")
     known_weights: dict = {}
     for block in all_blocks:
         if block['weight_label'] is None:
             block['weight_label'] = ask_weight(block, known_weights)
+        wt_map = WT_WEIGHT_CODES.get((block['gender'], block['age_group']), {})
+        wt_code = wt_map.get(block['weight_label'])
+        if wt_code:
+            block['weight_code'] = wt_code
 
     # ── Build athletes ─────────────────────────────────────────────────────────
     athletes_seen: dict = {}  # ath_key → row dict
@@ -450,13 +486,31 @@ def main():
     # ── Write CSVs ─────────────────────────────────────────────────────────────
     _write_athletes(list(athletes_seen.values()))
     _write_categories(list(categories_seen.values()))
-    _write_matches(all_matches)
+    _write_matches(_renumber_by_mat(all_matches))
 
     print(f"\nListo:")
     print(f"  athletes.csv   → {len(athletes_seen)} atletas")
     print(f"  categories.csv → {len(categories_seen)} categorías")
     print(f"  matches.csv    → {len(all_matches)} combates")
     print("\nCopia los CSV a src/main/resources/ y llama a GET /admin/reload")
+
+
+def _renumber_by_mat(matches: list[dict]) -> list[dict]:
+    """Renumber matchNumber to format {mat}{seq:02d} (e.g. 101, 102, 201)."""
+    mat_counters: dict[int, int] = {}
+    id_map: dict[str, str] = {}
+
+    for m in matches:
+        mat = m['mat']
+        mat_counters[mat] = mat_counters.get(mat, 0) + 1
+        id_map[m['matchNumber']] = f"{mat}{mat_counters[mat]:02d}"
+
+    for m in matches:
+        m['matchNumber'] = id_map[m['matchNumber']]
+        if m['nextMatchNumber']:
+            m['nextMatchNumber'] = id_map.get(m['nextMatchNumber'], m['nextMatchNumber'])
+
+    return matches
 
 
 def _write_athletes(rows: list[dict]):
