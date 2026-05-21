@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# install.sh: tries to install MySQL/MariaDB (when possible) and creates the DB/user if they don't exist.
+# setup-database.sh: tries to install MySQL/MariaDB (when possible) and creates the DB/user if they don't exist.
 # Designed for Unix-like environments (Debian/Ubuntu, Fedora/RHEL, CentOS, Alpine, Arch, macOS).
 # DOES NOT guarantee installation in all environments (requires sudo/root and appropriate repositories).
 

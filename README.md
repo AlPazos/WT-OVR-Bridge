@@ -159,22 +159,22 @@ java -jar target/quarkus-app/quarkus-run.jar
 ## Installation (database bootstrap)
 
 This project expects a MySQL-compatible database available at jdbc:mysql://localhost:3306/wtovr.
-You can create the database and user manually (see below) or use the provided helper script `install.sh`.
+You can create the database and user manually (see below) or use the provided helper script `setup-database.sh`.
 
-Note: `install.sh` tries to install MySQL/MariaDB using the host package manager and requires sudo/administrator privileges. It supports common Linux package managers (apt, dnf, yum, apk, pacman) and Homebrew on macOS. On Windows use Docker Desktop, WSL or follow the manual steps below.
+Note: `setup-database.sh` tries to install MySQL/MariaDB using the host package manager and requires sudo/administrator privileges. It supports common Linux package managers (apt, dnf, yum, apk, pacman) and Homebrew on macOS. On Windows use Docker Desktop, WSL or follow the manual steps below.
 
 Quick automatic bootstrap (Linux / macOS with sudo):
 
 ```bash
-chmod +x install.sh
-sudo ./install.sh
+chmod +x setup-database.sh
+sudo ./setup-database.sh
 # This will attempt to install a server (if missing) and create the database/user:
 #   database: wtovr
 #   user:     prueba
 #   password: prueba
 ```
 
-If `install.sh` cannot install the server (no supported package manager, or missing privileges), run the SQL manually as a MySQL root user:
+If `setup-database.sh` cannot install the server (no supported package manager, or missing privileges), run the SQL manually as a MySQL root user:
 
 ```sql
 CREATE DATABASE IF NOT EXISTS `wtovr` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
