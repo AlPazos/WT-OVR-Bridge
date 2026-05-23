@@ -1,16 +1,17 @@
 package pazos.wtovr.service;
 
-import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Observes;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pazos.wtovr.entity.Athlete;
+import pazos.wtovr.entity.Category;
 import pazos.wtovr.entity.Match;
 import pazos.wtovr.model.MatchConfigurationDto;
+import pazos.wtovr.model.MatchInputDto;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
@@ -18,20 +19,6 @@ import java.util.stream.Collectors;
 public class MatchStateService {
 
     private static final Logger log = LoggerFactory.getLogger(MatchStateService.class);
-
-    void onStart(@Observes StartupEvent ev) {
-        if (Match.count() == 0) {
-            loadCsv();
-        }
-    }
-
-    @Transactional(Transactional.TxType.REQUIRED)
-    public long loadCsv() {
-        new CsvMatchLoader().load();
-        long total = Match.count();
-        log.info("CSV cargado en BD — {} combates", total);
-        return total;
-    }
 
     public MatchConfigurationDto getNextCombat(String ring) {
         try {
@@ -94,6 +81,51 @@ public class MatchStateService {
         dto.setGender(athlete.gender);
         dto.setWfId(athlete.wfId);
         return dto;
+    }
+
+    @Transactional(Transactional.TxType.REQUIRED)
+    public Match convertDtoToMatch(MatchInputDto dto) {
+        if (dto.getMatchNumber() == null) {
+            throw new IllegalArgumentException("matchNumber is required");
+        }
+
+        Athlete blue = persistAthlete(dto.getBlueAthlete());
+        Athlete red = persistAthlete(dto.getRedAthlete());
+
+        Category category = dto.getCategoryId() != null
+                ? Category.findById(dto.getCategoryId())
+                : null;
+
+        Match match = new Match(dto.getMatchNumber());
+        match.mat = dto.getMat();
+        match.phase = dto.getPhase();
+        match.status = dto.getStatus() != null ? dto.getStatus() : "available";
+        match.blueAthlete = blue;
+        match.redAthlete = red;
+        match.category = category;
+        match.matchVictoryCriteria = dto.getMatchVictoryCriteria();
+        match.wtCompetitionDataProtocol = dto.getWtCompetitionDataProtocol();
+        match.nextMatchNumber = dto.getNextMatchNumber();
+        match.nextMatchColor = dto.getNextMatchColor();
+        if (dto.getBlueAthleteVideoQuota() != null) match.videoQuota = dto.getBlueAthleteVideoQuota();
+        match.persist();
+
+        return match;
+    }
+
+    private Athlete persistAthlete(MatchConfigurationDto.AthleteDto dto) {
+        if (dto == null) return null;
+        String id = dto.getOvrInternalId() != null ? dto.getOvrInternalId() : UUID.randomUUID().toString();
+        Athlete athlete = new Athlete(id, dto.getScoreboardName());
+        athlete.givenName = dto.getGivenName();
+        athlete.familyName = dto.getFamilyName();
+        athlete.flagAbbreviation = dto.getFlagAbbreviation() != null ? dto.getFlagAbbreviation() : "ESP";
+        athlete.rank = dto.getRank();
+        athlete.seed = dto.getSeed();
+        athlete.gender = dto.getGender();
+        athlete.wfId = dto.getWfId();
+        athlete.persist();
+        return athlete;
     }
 
     public MatchConfigurationDto convertMatchToDto(Match match) {
@@ -164,4 +196,6 @@ public class MatchStateService {
 
         return dto;
     }
+
+
 }

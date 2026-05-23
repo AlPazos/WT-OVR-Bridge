@@ -9,10 +9,12 @@ import pazos.wtovr.entity.Athlete;
 import pazos.wtovr.entity.Category;
 import pazos.wtovr.entity.Match;
 import pazos.wtovr.model.MatchConfigurationDto;
-import pazos.wtovr.model.ProvidedMatch;
+
+import pazos.wtovr.model.MatchInputDto;
 import pazos.wtovr.service.MatchStateService;
 import pazos.wtovr.service.TournamentService;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Path("/manager")
@@ -157,4 +159,17 @@ public class ManagerResource {
         return Response.ok().build();
     }
 
+    @POST
+    @Path("/uploadTournament")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional
+    public Response uploadTournament(List<MatchInputDto> matches) {
+        if (matches == null || matches.isEmpty()) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("matches list required").build();
+        }
+        for (MatchInputDto match : matches) {
+            matchStateService.convertDtoToMatch(match);
+        }
+        return Response.ok().build();
+    }
 }

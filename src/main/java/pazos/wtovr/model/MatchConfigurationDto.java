@@ -10,7 +10,6 @@ import java.util.Date;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class MatchConfigurationDto {
-
     private String internalId;
     private Integer mat;
     private String matchNumber;

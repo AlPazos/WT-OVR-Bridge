@@ -41,7 +41,7 @@ public class Match extends PanacheEntityBase {
     public String nextMatchNumber;
     public String nextMatchColor;
 
-    @Column(nullable = false, columnDefinition = "varchar(20) default 'available'")
+    @Column(nullable = false)
     public String status = "available";
 
     @CreationTimestamp
